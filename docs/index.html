@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shelfmark — the tag is not the jar</title>
+  <meta name="description" content="Scan a book. Count the stamp. Keep a dollar. Family used-book shop for homestead kids." />
+  <meta name="theme-color" content="#2F463C" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,650&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f3eee4;
+      --elevated: #faf7f1;
+      --ink: #1c1916;
+      --muted: #6f6a62;
+      --subtle: #9a948a;
+      --cloth: #2f463c;
+      --cloth-fg: #f3eee4;
+      --rule: #c9c3b8;
+      --stamp: #8b3a2a;
+      --stamp-fg: #faf7f1;
+      --good: #3f6b4a;
+      --good-fg: #f3eee4;
+      --warn: #8a5a2b;
+      --display: "Fraunces", ui-serif, Georgia, serif;
+      --sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.5; }
+    button { font-family: inherit; cursor: pointer; }
+    button:disabled { cursor: default; opacity: 0.4; }
+    a { color: var(--ink); }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--rule);
+      background: color-mix(in oklab, var(--paper) 90%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .bar { max-width: 72rem; margin: 0 auto; padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .mark { width: 2.25rem; height: 2.25rem; display: grid; place-items: center; background: var(--cloth); color: var(--cloth-fg); border-radius: 4px; font-family: var(--display); font-size: 11px; letter-spacing: 0.18em; font-weight: 600; }
+    .brand { font-family: var(--display); font-size: 1.15rem; font-weight: 600; }
+    .whisper { display: block; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+    nav { margin-left: auto; display: flex; gap: 0.25rem; }
+    nav button, nav a {
+      height: 2.5rem; padding: 0 0.85rem; border: 0; border-radius: 8px;
+      background: transparent; color: var(--muted); text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    nav button.is-on, nav a.is-on { background: var(--cloth); color: var(--cloth-fg); }
+    main { max-width: 72rem; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
+    h1 { font-family: var(--display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0.15rem 0 0.5rem; text-wrap: balance; }
+    h2 { font-family: var(--display); font-weight: 600; }
+    .lede { max-width: 38rem; color: var(--muted); }
+    .card { background: var(--elevated); border: 1px solid var(--rule); border-radius: 16px; padding: 1.25rem; box-shadow: 0 1px 0 rgb(28 25 22 / 0.04), 0 12px 32px rgb(28 25 22 / 0.06); }
+    .row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent); padding: 0.4rem 0; }
+    .row:last-child { border: 0; }
+    .num { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 1.25rem; }
+    .spines { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
+    @media (max-width: 720px) { .spines { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .spine {
+      min-height: 6rem; text-align: left; border: 0; border-radius: 12px;
+      background: var(--cloth); color: var(--cloth-fg); padding: 0.75rem;
+      position: relative; overflow: hidden;
+    }
+    .spine::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 8px; background: var(--stamp); }
+    .spine.is-on { box-shadow: 0 0 0 2px var(--ink); }
+    .grid-2 { display: grid; gap: 1.1rem; }
+    @media (min-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr) 22rem; } }
+    .bin { width: 100%; min-height: 5rem; border: 0; border-radius: 16px; padding: 1rem 1.2rem; text-align: left; display: flex; flex-direction: column; gap: 0.1rem; }
+    .bin:active { transform: scale(0.98); }
+    .bin b { font-family: var(--display); font-size: 1.5rem; font-weight: 600; }
+    .bin.sell { background: var(--good); color: var(--good-fg); }
+    .bin.other { background: var(--warn); color: var(--elevated); }
+    .bin.give { background: var(--stamp); color: var(--stamp-fg); }
+    .bin.is-hint { box-shadow: 0 0 0 3px var(--ink); }
+    .toggle { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .toggle input { width: 1.15rem; height: 1.15rem; margin-top: 0.2rem; accent-color: var(--cloth); }
+    .bins { display: flex; flex-direction: column; gap: 0.75rem; }
+    .spread { display: grid; }
+    @media (min-width: 900px) { .spread { grid-template-columns: 1.1fr 0.9fr; } }
+    .art { background: var(--cloth); color: var(--cloth-fg); min-height: 18rem; padding: 1.5rem; }
+    .pager { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 2rem; }
+    .pager button, .ghost, .solid {
+      height: 3rem; min-width: 6rem; border-radius: 8px; padding: 0 1rem; font-size: 0.9rem;
+    }
+    .ghost { background: transparent; border: 1px solid var(--rule); color: var(--ink); }
+    .solid { background: var(--cloth); color: var(--cloth-fg); border: 0; }
+    .dots { display: flex; gap: 0.4rem; }
+    .dot { width: 0.6rem; height: 0.6rem; border-radius: 99px; border: 0; background: var(--rule); padding: 0; }
+    .dot.is-on { background: var(--ink); }
+    .jars { display: grid; gap: 1rem; }
+    @media (min-width: 700px) { .jars { grid-template-columns: 1fr 1fr; } }
+    .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    .pill { display: inline-flex; border-radius: 99px; padding: 0.15rem 0.7rem; font-size: 0.75rem; }
+    .hidden { display: none !important; }
+    .wait { min-height: 16rem; display: grid; place-items: center; text-align: center; }
+    .danger { color: var(--stamp); }
+    .muted { color: var(--muted); }
+    .big { font-size: 2.75rem; font-weight: 600; font-family: var(--display); font-variant-numeric: tabular-nums; margin: 0.35rem 0; }
+    .foot { margin-top: 2rem; color: var(--muted); font-size: 0.9rem; }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <span class="mark" aria-hidden>SM</span>
+      <span>
+        <span class="brand">Shelfmark</span>
+        <span class="whisper">The tag is not the jar</span>
+      </span>
+      <nav>
+        <button type="button" data-tab="shop" class="is-on">Shop</button>
+        <button type="button" data-tab="story">Story</button>
+        <button type="button" data-tab="jar">Jar</button>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section id="shop">
+      <p class="whisper">Kid shop</p>
+      <h1>Scan. Sort. Keep a dollar.</h1>
+      <p class="lede">Tap a practice book. The tag is what a buyer pays. The jar is what we keep. Three bins. No typing.</p>
+      <div class="card toggle" style="margin: 1.25rem 0;">
+        <input id="stamp" type="checkbox" checked />
+        <label for="stamp">
+          <strong style="font-family: var(--display); font-size: 1.15rem;">Count the stamp</strong>
+          <span class="muted" style="display:block; font-size: 0.9rem;">Leave this on. An eight-dollar paperback can leave less than a dollar after the shop, the envelope, and the stamp.</span>
+        </label>
+      </div>
+      <div class="card" style="margin-bottom: 1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <p class="whisper" style="margin:0;">Practice six books</p>
+          <button type="button" class="solid" id="start-practice">Start practice</button>
+        </div>
+        <div class="spines" id="spines"></div>
+        <p class="muted" id="practice-note" style="margin: 0.75rem 0 0;"></p>
+      </div>
+      <div id="stage"></div>
+      <p class="foot">This page is the family copy — shop, story, and jar. The live desk with inventory, Amazon loader, and reel lives in the full Shelfmark app.</p>
+    </section>
+
+    <section id="story" class="hidden">
+      <p class="whisper">Picture book · parent reads</p>
+      <h1>The tag is not the jar</h1>
+      <p class="lede">Sit together. You read the smaller paragraph. The child follows the picture and the huge line.</p>
+      <div class="card spread" style="padding:0; overflow:hidden; margin-top: 1.25rem;">
+        <div class="art" id="story-art"></div>
+        <div style="padding: 1.75rem;">
+          <p class="whisper" id="story-kicker"></p>
+          <p id="story-child" style="font-family: var(--display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; line-height: 1.1; margin: 1rem 0;"></p>
+          <p class="whisper">Parent, read this</p>
+          <p id="story-parent"></p>
+          <div class="pager">
+            <button type="button" class="ghost" id="story-back">Back</button>
+            <div class="dots" id="story-dots"></div>
+            <button type="button" class="solid" id="story-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="jar" class="hidden">
+      <p class="whisper">The jar</p>
+      <h1>Buyer paid is not we keep</h1>
+      <p class="lede">Every tap in the shop writes a line here. The left number is the tag. The right number is the jar.</p>
+      <div class="jars" style="margin: 1.25rem 0;">
+        <div class="card">
+          <p class="whisper">Buyer paid</p>
+          <p class="big" id="jar-paid">$0.00</p>
+          <p class="muted">What the tag said, added up.</p>
+        </div>
+        <div class="card" style="background: var(--cloth); color: var(--cloth-fg); border-color: var(--cloth);">
+          <p class="whisper" style="color: color-mix(in oklab, var(--cloth-fg) 70%, transparent);">We keep</p>
+          <p class="big" id="jar-keep">$0.00</p>
+          <p style="opacity:0.85;" id="jar-gap">After the shop, the envelope, and the stamp.</p>
+        </div>
+      </div>
+      <div class="stat3" id="jar-stats"></div>
+      <div class="card" style="margin-top: 1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 0.75rem;">
+          <h2 style="margin:0; font-size: 1.4rem;">Today's line</h2>
+          <button type="button" class="ghost" id="jar-reset">Empty the jar</button>
+        </div>
+        <div id="jar-log" style="margin-top: 0.75rem;"></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const AMAZON_REFERRAL = 0.15, AMAZON_CLOSING = 1.8, STAMP_FIRST = 4.47, STAMP_EXTRA = 0.75, MAILER = 0.4, MIN_KEEP = 1, EBAY_FVF = 0.153;
+    const BOOKS = {
+      "9781285741550": { title: "Calculus", author: "James Stewart", format: "textbook", price: 24.99, short: "Calculus" },
+      "9780743273565": { title: "The Great Gatsby", author: "F. Scott Fitzgerald", format: "paperback", price: 8.99, short: "Gatsby" },
+      "9780807508527": { title: "The Boxcar Children", author: "Gertrude Chandler Warner", format: "paperback", price: 6.5, short: "Boxcar" },
+      "9781451673319": { title: "Fahrenheit 451", author: "Ray Bradbury", format: "paperback", price: 9.25, short: "F451" },
+      "9780618260300": { title: "The Hobbit", author: "J.R.R. Tolkien", format: "paperback", price: 8.5, short: "Hobbit" },
+      "9780553212679": { title: "Adventures of Huckleberry Finn", author: "Mark Twain", format: "mass-market", price: 2.49, short: "Huck" },
+    };
+    const PRACTICE = Object.keys(BOOKS);
+    const KEY = "shelfmark-jar-v1";
+    const money = (n) => (n < 0 ? "−" : "") + "$" + Math.abs(n).toFixed(2);
+    function weight(format) { return format === "textbook" ? 3.2 : format === "hardcover" ? 1.1 : format === "mass-market" ? 0.4 : 0.5; }
+    function stamp(format) { const lb = Math.max(1, Math.ceil(weight(format))); return STAMP_FIRST + Math.max(0, lb - 1) * STAMP_EXTRA; }
+    function kidCard(book, wePayStamp) {
+      const price = book.price;
+      const st = stamp(book.format);
+      const shop = price * AMAZON_REFERRAL + AMAZON_CLOSING;
+      const takeShown = shop + MAILER + (wePayStamp ? st : 0);
+      const keepAmazon = price - takeShown;
+      const ebayTotal = price + (wePayStamp ? 0 : st);
+      const ebayFee = ebayTotal * EBAY_FVF + (ebayTotal <= 10 ? 0.3 : 0.4);
+      const keepEbay = price - ebayFee - MAILER - (wePayStamp ? st : 0);
+      let choice, why;
+      if (keepAmazon >= MIN_KEEP) { choice = "SELL IT"; why = "We keep at least a dollar after the shop, the envelope, and the stamp."; }
+      else if (keepEbay >= MIN_KEEP) { choice = "TRY THE OTHER SHOP"; why = "This first shop would leave us too little. The other shop still leaves a dollar."; }
+      else { choice = "GIVE IT AWAY"; why = "After the shop and the stamp we keep less than a dollar. Giving it away is the smart shop choice."; }
+      return { buyerPays: price, shopTakes: shop, stamp: st, mailer: MAILER, keepAmazon, keepEbay, choice, why };
+    }
+    function emptyJar() { return { buyerPaid: 0, weKeep: 0, sold: 0, other: 0, given: 0, log: [] }; }
+    function readJar() {
+      try { return Object.assign(emptyJar(), JSON.parse(localStorage.getItem(KEY) || "null") || {}); }
+      catch { return emptyJar(); }
+    }
+    function writeJar(j) { localStorage.setItem(KEY, JSON.stringify(j)); }
+    function addToJar(entry) {
+      const j = readJar();
+      const keep = entry.choice === "GIVE IT AWAY" ? 0 : entry.keep;
+      const buyer = entry.choice === "GIVE IT AWAY" ? 0 : entry.buyerPays;
+      j.buyerPaid += buyer; j.weKeep += Math.max(0, keep);
+      if (entry.choice === "SELL IT") j.sold += 1;
+      else if (entry.choice === "TRY THE OTHER SHOP") j.other += 1;
+      else j.given += 1;
+      j.log = [{ title: entry.title, choice: entry.choice, buyerPays: buyer, keep, at: Date.now() }, ...j.log].slice(0, 40);
+      writeJar(j); return j;
+    }
+
+    const state = { isbn: null, practiceAt: null, hits: [], page: 0 };
+    const stampEl = document.getElementById("stamp");
+    const stage = document.getElementById("stage");
+    const spines = document.getElementById("spines");
+    const note = document.getElementById("practice-note");
+
+    function wePay() { return stampEl.checked; }
+    function renderSpines() {
+      spines.innerHTML = PRACTICE.map((isbn) => {
+        const b = BOOKS[isbn];
+        return `<button type="button" class="spine${state.isbn === isbn ? " is-on" : ""}" data-isbn="${isbn}"><b>${b.short}</b><span class="muted" style="display:block;color:color-mix(in oklab, var(--cloth-fg) 70%, transparent); font-size:0.8rem;">${b.author}</span></button>`;
+      }).join("");
+    }
+    function showBook(isbn) {
+      state.isbn = isbn;
+      renderSpines();
+      const book = BOOKS[isbn];
+      const card = kidCard(book, wePay());
+      const keepCls = card.keepAmazon < 1 ? " danger" : "";
+      stage.innerHTML = `
+        <div class="grid-2">
+          <div class="card">
+            <p class="whisper">${book.format.replace("-", " ")}</p>
+            <h2 style="font-size:1.8rem; margin:0.2rem 0;">${book.title}</h2>
+            <p class="muted">${book.author}</p>
+            <div style="margin-top:1rem;">
+              <div class="row"><span class="muted">Buyer pays</span><span class="num">${money(card.buyerPays)}</span></div>
+              <div class="row"><span class="muted">Shop takes</span><span class="num muted">${money(card.shopTakes)}</span></div>
+              <div class="row"><span class="muted">Envelope</span><span class="num muted">${money(card.mailer)}</span></div>
+              <div class="row"><span class="muted">Stamp</span><span class="num muted">${wePay() ? money(card.stamp) : "buyer pays"}</span></div>
+              <div class="row"><span>We keep</span><span class="num${keepCls}" style="font-size:1.6rem; font-weight:600;">${money(card.keepAmazon)}</span></div>
+            </div>
+            <p class="muted">${card.why}</p>
+            <p class="whisper">The shop says · ${card.choice}</p>
+          </div>
+          <div class="bins">
+            <button class="bin sell${card.choice === "SELL IT" ? " is-hint" : ""}" data-choice="SELL IT"><b>SELL IT</b><span>Green bin · we keep a dollar</span></button>
+            <button class="bin other${card.choice === "TRY THE OTHER SHOP" ? " is-hint" : ""}" data-choice="TRY THE OTHER SHOP"><b>TRY THE OTHER SHOP</b><span>Ochre bin · this shop is too expensive</span></button>
+            <button class="bin give${card.choice === "GIVE IT AWAY" ? " is-hint" : ""}" data-choice="GIVE IT AWAY"><b>GIVE IT AWAY</b><span>Oxblood bin · smart shop choice</span></button>
+          </div>
+        </div>`;
+    }
+    function waiting() {
+      state.isbn = null;
+      renderSpines();
+      stage.innerHTML = `<div class="card wait"><div><h2 style="margin:0 0 0.4rem;">Waiting for a book</h2><p class="muted">Tap a practice spine. The three bins appear after the money card.</p></div></div>`;
+    }
+    function choose(choice) {
+      const book = BOOKS[state.isbn];
+      if (!book) return;
+      const card = kidCard(book, wePay());
+      const keep = choice === "SELL IT" ? card.keepAmazon : choice === "TRY THE OTHER SHOP" ? card.keepEbay : 0;
+      addToJar({ title: book.title, choice, buyerPays: card.buyerPays, keep });
+      renderJar();
+      stage.innerHTML = `<div class="card wait"><div><p class="whisper">Into the bin</p><h2 style="font-size:2.4rem; margin:0.3rem 0;">${choice}</h2><p class="muted">${book.title}</p></div></div>`;
+      if (state.practiceAt != null) {
+        state.hits.push(choice);
+        const nxt = state.practiceAt + 1;
+        setTimeout(() => {
+          if (nxt < PRACTICE.length) {
+            state.practiceAt = nxt;
+            note.textContent = "Book " + (nxt + 1) + " of 6";
+            showBook(PRACTICE[nxt]);
+          } else {
+            const sold = state.hits.filter((c) => c === "SELL IT").length;
+            const other = state.hits.filter((c) => c === "TRY THE OTHER SHOP").length;
+            const given = state.hits.filter((c) => c === "GIVE IT AWAY").length;
+            state.practiceAt = null;
+            note.textContent = "Practice done. " + sold + " sell, " + other + " other shop, " + given + " give away. Check the jar.";
+            waiting();
+          }
+        }, 800);
+      } else {
+        setTimeout(waiting, 800);
+      }
+    }
+
+    spines.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-isbn]");
+      if (!btn) return;
+      state.practiceAt = null;
+      showBook(btn.dataset.isbn);
+    });
+    stage.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-choice]");
+      if (btn) choose(btn.dataset.choice);
+    });
+    stampEl.addEventListener("change", () => { if (state.isbn) showBook(state.isbn); });
+    document.getElementById("start-practice").addEventListener("click", () => {
+      state.practiceAt = 0; state.hits = [];
+      note.textContent = "Book 1 of 6";
+      showBook(PRACTICE[0]);
+    });
+
+    const PAGES = [
+      { kicker: "The shop", child: "We run a book shop.", parent: "This is our book shop. We find books, we decide if they earn a dollar, and we put them in a bin. You do not have to type a title.", art: "shop" },
+      { kicker: "The stripe", child: "Point. Beep. That's the book.", parent: "Every book has a stripe of numbers on the back. Point the gun. The shop reads the stripe. You can also tap a practice book if the gun is charging.", art: "gun" },
+      { kicker: "The trap", child: "The tag is not the jar.", parent: "The number on the tag is what a buyer pays. It is not what we keep. Eight dollars on the spine can be ninety-seven cents in the jar.", art: "tag" },
+      { kicker: "The stamp", child: "Count the stamp.", parent: "Leave Count the stamp on. A cheap paperback looks like a sale until the stamp sits on the card. That is the whole lesson.", art: "stamp" },
+      { kicker: "Three bins", child: "Green. Ochre. Oxblood.", parent: "Green: we keep a dollar — sell it. Ochre: this shop is too expensive — try the other shop. Oxblood: give it away. Giving it away is a smart shop choice, not a failure.", art: "bins" },
+      { kicker: "Practice", child: "Six books. Three bins.", parent: "Practice six books: Calculus, Gatsby, Boxcar, Fahrenheit 451, Hobbit, Huck. With the stamp on, two should be green, two ochre, two oxblood.", art: "six" },
+      { kicker: "Our house", child: "Our house. Our bins.", parent: "Sold books live in dining-room bins until they ship. We pack them. We do not send the book to a warehouse we cannot see.", art: "house" },
+      { kicker: "Next door", child: "The desk is next door.", parent: "When you are ready for grades, titles, and listing files, the grown-up desk is in the full app. Same shop. More knobs. The jar still counts what we keep.", art: "desk" },
+    ];
+    const ARTS = {
+      shop: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="24" y="48" width="272" height="160" rx="8" fill="#F3EEE4"/><rect x="40" y="64" width="48" height="128" fill="#2F463C"/><rect x="96" y="80" width="40" height="112" fill="#1C1916"/><rect x="144" y="56" width="52" height="136" fill="#8B3A2A"/><rect x="204" y="72" width="44" height="120" fill="#3F6B4A"/><rect x="256" y="88" width="24" height="104" fill="#8A5A2B"/></svg>',
+      gun: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="36" y="70" width="160" height="110" rx="6" fill="#F3EEE4"/><rect x="52" y="150" width="128" height="10" fill="#1C1916"/><rect x="220" y="88" width="64" height="28" rx="4" fill="#F3EEE4"/><rect x="236" y="116" width="24" height="48" fill="#F3EEE4"/><circle cx="200" cy="102" r="6" fill="#8B3A2A"/></svg>',
+      tag: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="48" y="56" width="140" height="140" rx="6" fill="#F3EEE4"/><text x="70" y="128" fill="#1C1916" font-family="Georgia,serif" font-size="28">$8.00</text><line x1="64" y1="116" x2="172" y2="140" stroke="#8B3A2A" stroke-width="4"/><rect x="204" y="88" width="84" height="84" rx="42" fill="#F3EEE4"/><text x="218" y="138" fill="#2F463C" font-family="Georgia,serif" font-size="18">$0.97</text></svg>',
+      stamp: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="70" y="70" width="180" height="110" rx="8" fill="#F3EEE4"/><rect x="92" y="92" width="136" height="66" rx="4" fill="#2F463C"/><rect x="108" y="108" width="48" height="34" fill="#F3EEE4"/></svg>',
+      bins: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="28" y="80" width="80" height="100" rx="8" fill="#3F6B4A"/><rect x="120" y="80" width="80" height="100" rx="8" fill="#8A5A2B"/><rect x="212" y="80" width="80" height="100" rx="8" fill="#8B3A2A"/><text x="44" y="138" fill="#F3EEE4" font-family="Georgia,serif" font-size="16">Sell</text><text x="136" y="138" fill="#F3EEE4" font-family="Georgia,serif" font-size="16">Other</text><text x="234" y="138" fill="#F3EEE4" font-family="Georgia,serif" font-size="16">Give</text></svg>',
+      six: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="36" y="70" width="36" height="110" fill="#3F6B4A"/><rect x="80" y="82" width="36" height="110" fill="#8A5A2B"/><rect x="124" y="70" width="36" height="110" fill="#8B3A2A"/><rect x="168" y="82" width="36" height="110" fill="#3F6B4A"/><rect x="212" y="70" width="36" height="110" fill="#8A5A2B"/><rect x="256" y="82" width="36" height="110" fill="#8B3A2A"/></svg>',
+      house: '<svg viewBox="0 0 320 240" width="100%" height="100%"><polygon points="160,36 280,100 40,100" fill="#F3EEE4"/><rect x="64" y="100" width="192" height="108" fill="#F3EEE4"/><rect x="88" y="140" width="48" height="68" fill="#2F463C"/><rect x="152" y="148" width="36" height="36" fill="#8B3A2A"/><rect x="200" y="148" width="36" height="36" fill="#3F6B4A"/></svg>',
+      desk: '<svg viewBox="0 0 320 240" width="100%" height="100%"><rect x="40" y="120" width="240" height="16" fill="#F3EEE4"/><rect x="56" y="136" width="12" height="56" fill="#F3EEE4"/><rect x="252" y="136" width="12" height="56" fill="#F3EEE4"/><rect x="72" y="64" width="72" height="56" fill="#2F463C"/><rect x="160" y="80" width="100" height="40" rx="4" fill="#F3EEE4"/></svg>',
+    };
+    function renderStory() {
+      const p = PAGES[state.page];
+      document.getElementById("story-art").innerHTML = ARTS[p.art];
+      document.getElementById("story-kicker").textContent = "Page " + (state.page + 1) + " of " + PAGES.length + " · " + p.kicker;
+      document.getElementById("story-child").textContent = p.child;
+      document.getElementById("story-parent").textContent = p.parent;
+      document.getElementById("story-dots").innerHTML = PAGES.map((_, i) => `<button type="button" class="dot${i === state.page ? " is-on" : ""}" data-page="${i}" aria-label="Page ${i + 1}"></button>`).join("");
+      document.getElementById("story-back").disabled = state.page === 0;
+      document.getElementById("story-next").textContent = state.page === PAGES.length - 1 ? "Open shop" : "Next";
+    }
+    document.getElementById("story-back").addEventListener("click", () => { state.page = Math.max(0, state.page - 1); renderStory(); });
+    document.getElementById("story-next").addEventListener("click", () => {
+      if (state.page === PAGES.length - 1) { showTab("shop"); return; }
+      state.page += 1; renderStory();
+    });
+    document.getElementById("story-dots").addEventListener("click", (e) => {
+      const d = e.target.closest("[data-page]");
+      if (!d) return;
+      state.page = Number(d.dataset.page);
+      renderStory();
+    });
+
+    function tone(choice) {
+      return choice === "SELL IT" ? "background:var(--good);color:var(--good-fg)" : choice === "TRY THE OTHER SHOP" ? "background:var(--warn);color:var(--elevated)" : "background:var(--stamp);color:var(--stamp-fg)";
+    }
+    function renderJar() {
+      const j = readJar();
+      document.getElementById("jar-paid").textContent = money(j.buyerPaid);
+      document.getElementById("jar-keep").textContent = money(j.weKeep);
+      document.getElementById("jar-gap").textContent = "After the shop, the envelope, and the stamp. Gap " + money(j.buyerPaid - j.weKeep) + ".";
+      document.getElementById("jar-stats").innerHTML = [
+        ["Sell it", j.sold, "var(--good)", "var(--good-fg)"],
+        ["Other shop", j.other, "var(--warn)", "var(--elevated)"],
+        ["Give away", j.given, "var(--stamp)", "var(--stamp-fg)"],
+      ].map(([l, v, bg, fg]) => `<div class="card" style="background:${bg};color:${fg};border:0;"><p class="whisper" style="color:inherit;opacity:.8;">${l}</p><p class="big" style="font-size:2rem;">${v}</p></div>`).join("");
+      const log = document.getElementById("jar-log");
+      if (!j.log.length) log.innerHTML = '<p class="muted">Nothing in the jar yet. Open the shop and sort a practice book.</p>';
+      else log.innerHTML = j.log.map((row) => `<div class="row"><div><strong style="font-family:var(--display);">${row.title}</strong><div><span class="pill" style="${tone(row.choice)}">${row.choice}</span></div></div><div style="text-align:right;"><div class="muted">tag ${money(row.buyerPays)}</div><div class="num">keep ${money(row.keep)}</div></div></div>`).join("");
+    }
+    document.getElementById("jar-reset").addEventListener("click", () => { writeJar(emptyJar()); renderJar(); });
+
+    function showTab(name) {
+      ["shop", "story", "jar"].forEach((id) => document.getElementById(id).classList.toggle("hidden", id !== name));
+      document.querySelectorAll("nav [data-tab]").forEach((b) => b.classList.toggle("is-on", b.dataset.tab === name));
+      if (name === "jar") renderJar();
+      location.hash = name === "shop" ? "" : name;
+    }
+    document.querySelector("nav").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-tab]");
+      if (b) showTab(b.dataset.tab);
+    });
+    const hash = location.hash.replace("#", "");
+    waiting();
+    renderStory();
+    renderJar();
+    if (hash === "story" || hash === "jar") showTab(hash);
+  </script>
+</body>
+</html>
