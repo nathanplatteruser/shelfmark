@@ -1,0 +1,235 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,650&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-paper: #f3eee4;
+  --color-elevated: #faf7f1;
+  --color-ink: #1c1916;
+  --color-muted: #6f6a62;
+  --color-subtle: #9a948a;
+  --color-cloth: #2f463c;
+  --color-cloth-fg: #f3eee4;
+  --color-rule: #c9c3b8;
+  --color-rule-strong: #a8a194;
+  --color-stamp: #8b3a2a;
+  --color-stamp-fg: #faf7f1;
+  --color-good: #3f6b4a;
+  --color-good-fg: #f3eee4;
+  --color-warn: #8a5a2b;
+  --color-background: #f3eee4;
+  --color-foreground: #1c1916;
+  --color-border: #c9c3b8;
+  --color-primary: #2f463c;
+  --color-primary-foreground: #f3eee4;
+  --color-card: #faf7f1;
+  --color-muted-foreground: #6f6a62;
+  --color-ring: #2f463c;
+  --color-destructive: #8b3a2a;
+
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  --shadow-ticket: 0 1px 0 rgb(28 25 22 / 0.04), 0 12px 32px rgb(28 25 22 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-cloth) 22%, transparent);
+    color: var(--color-ink);
+  }
+}
+
+.reel-stage {
+  perspective: 1100px;
+}
+.reel-card {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reel-card.is-turn {
+  transform: rotateY(180deg);
+}
+.reel-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  backface-visibility: hidden;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.reel-face-cover {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.kid-bin {
+  display: flex;
+  min-height: 5rem;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.15rem;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  text-align: left;
+  letter-spacing: 0.04em;
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease;
+}
+.kid-bin:active {
+  transform: scale(0.98);
+}
+.kid-bin-sell {
+  background: var(--color-good);
+  color: var(--color-good-fg);
+}
+.kid-bin-other {
+  background: var(--color-warn);
+  color: var(--color-elevated);
+}
+.kid-bin-give {
+  background: var(--color-stamp);
+  color: var(--color-stamp-fg);
+}
+.kid-bin.is-hint {
+  box-shadow: 0 0 0 3px var(--color-ink);
+}
+.kid-bin:disabled {
+  opacity: 0.45;
+}
+
+.tour-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in oklab, var(--color-ink) 52%, transparent);
+}
+.tour-invite {
+  width: min(32rem, 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-rule);
+  background: var(--color-elevated);
+  color: var(--color-ink);
+  padding: 1.75rem 1.5rem;
+  box-shadow: var(--shadow-ticket);
+}
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+.tour-pane {
+  position: absolute;
+  pointer-events: auto;
+}
+.tour-ring {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 12px;
+  box-shadow: 0 0 0 3px var(--color-stamp);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-ring {
+    animation: tour-pulse 1.8s ease-in-out infinite;
+  }
+}
+@keyframes tour-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--color-stamp);
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--color-cloth);
+  }
+}
+.tour-bubble {
+  position: fixed;
+  z-index: 90;
+  pointer-events: auto;
+  width: min(22.5rem, calc(100vw - 1.5rem));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-rule);
+  background: var(--color-elevated);
+  color: var(--color-ink);
+  padding: 1.1rem 1.15rem 1rem;
+  box-shadow: var(--shadow-ticket);
+}
+
+.spine-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-cloth);
+  color: var(--color-cloth-fg);
+}
+.spine-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  background: var(--color-stamp);
+}
+
+.story-spread {
+  min-height: 22rem;
+}

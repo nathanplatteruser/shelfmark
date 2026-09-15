@@ -101,6 +101,13 @@
     .muted { color: var(--muted); }
     .big { font-size: 2.75rem; font-weight: 600; font-family: var(--display); font-variant-numeric: tabular-nums; margin: 0.35rem 0; }
     .foot { margin-top: 2rem; color: var(--muted); font-size: 0.9rem; }
+    .tour-scrim { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in oklab, var(--ink) 52%, transparent); }
+    .tour-invite { width: min(32rem, 100%); background: var(--elevated); border: 1px solid var(--rule); border-radius: 16px; padding: 1.75rem 1.5rem; }
+    .tour-layer { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
+    .tour-pane { position: absolute; pointer-events: auto; background: color-mix(in oklab, var(--ink) 45%, transparent); }
+    .tour-ring { position: absolute; pointer-events: none; border-radius: 12px; box-shadow: 0 0 0 3px var(--stamp); }
+    .tour-bubble { position: fixed; z-index: 90; pointer-events: auto; width: min(22.5rem, calc(100vw - 1.5rem)); background: var(--elevated); border: 1px solid var(--rule); border-radius: 12px; padding: 1.1rem; }
+    .tour-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; align-items: center; }
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; animation: none !important; }
     }
@@ -117,7 +124,7 @@
       <nav>
         <button type="button" data-tab="shop" class="is-on">Shop</button>
         <button type="button" data-tab="story">Story</button>
-        <button type="button" data-tab="jar">Jar</button>
+        <button type="button" data-tab="jar" data-tour="nav-jar">Jar</button>
       </nav>
     </div>
   </header>
@@ -126,7 +133,8 @@
       <p class="whisper">Kid shop</p>
       <h1>Scan. Sort. Keep a dollar.</h1>
       <p class="lede">Tap a practice book. The tag is what a buyer pays. The jar is what we keep. Three bins. No typing.</p>
-      <div class="card toggle" style="margin: 1.25rem 0;">
+      <p class="muted" style="font-size:0.9rem; max-width:38rem;">Family copy — shop, story, and jar. Camera stack, unique ISBN tags, keep-a-dollar, and eBay/Amazon files live in the full desk. <a href="https://nathanplatteruser.github.io/childrens-books/">Children’s books hub</a> · <a href="https://github.com/nathanplatteruser/shelfmark">source</a></p>
+      <div class="card toggle" data-tour="shop-stamp" style="margin: 1.25rem 0;">
         <input id="stamp" type="checkbox" checked />
         <label for="stamp">
           <strong style="font-family: var(--display); font-size: 1.15rem;">Count the stamp</strong>
@@ -136,13 +144,13 @@
       <div class="card" style="margin-bottom: 1.25rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap: 0.75rem; margin-bottom: 0.75rem;">
           <p class="whisper" style="margin:0;">Practice six books</p>
-          <button type="button" class="solid" id="start-practice">Start practice</button>
+          <button type="button" class="solid" id="start-practice" data-tour="shop-practice">Start practice</button>
         </div>
         <div class="spines" id="spines"></div>
         <p class="muted" id="practice-note" style="margin: 0.75rem 0 0;"></p>
       </div>
       <div id="stage"></div>
-      <p class="foot">This page is the family copy — shop, story, and jar. The live desk with inventory, Amazon loader, and reel lives in the full Shelfmark app.</p>
+      <p class="foot">This page is the family copy — shop, story, and jar. Camera stack, unique ISBN comps, keep-a-dollar, Pile, and eBay/Amazon files live in the full Shelfmark desk. Public aisle: <a href="https://nathanplatteruser.github.io/childrens-books/">childrens-books</a>.</p>
     </section>
 
     <section id="story" class="hidden">
@@ -175,7 +183,7 @@
           <p class="big" id="jar-paid">$0.00</p>
           <p class="muted">What the tag said, added up.</p>
         </div>
-        <div class="card" style="background: var(--cloth); color: var(--cloth-fg); border-color: var(--cloth);">
+        <div class="card" data-tour="jar-keep" style="background: var(--cloth); color: var(--cloth-fg); border-color: var(--cloth);">
           <p class="whisper" style="color: color-mix(in oklab, var(--cloth-fg) 70%, transparent);">We keep</p>
           <p class="big" id="jar-keep">$0.00</p>
           <p style="opacity:0.85;" id="jar-gap">After the shop, the envelope, and the stamp.</p>
@@ -409,6 +417,84 @@
     renderStory();
     renderJar();
     if (hash === "story" || hash === "jar") showTab(hash);
+
+    (function clickTour() {
+      const TOUR_KEY = "shelfmark.tour.v1";
+      const KNOWN = "shelfmark.known";
+      const steps = [
+        { tab: "shop", target: "shop-practice", child: "Start practice is this button.", parent: "Six real books. No typing." },
+        { tab: "shop", target: "shop-stamp", child: "Count the stamp.", parent: "Leave this on. An eight-dollar book can leave less than a dollar after the stamp." },
+        { tab: "shop", target: "nav-jar", child: "Tap Jar next.", parent: "Every sort writes a line. Buyer paid is not we keep." },
+        { tab: "jar", target: "jar-keep", child: "This number is the jar.", parent: "The cloth card is the money that actually stays." },
+      ];
+      function known() {
+        try {
+          const t = JSON.parse(localStorage.getItem(TOUR_KEY) || "null");
+          if (t && (t.status === "done" || t.status === "skipped")) return true;
+        } catch {}
+        if (localStorage.getItem(KNOWN) === "1") return true;
+        try { if ((readJar().log || []).length) return true; } catch {}
+        return false;
+      }
+      function mark(status) {
+        localStorage.setItem(TOUR_KEY, JSON.stringify({ status }));
+        if (status === "done" || status === "skipped") localStorage.setItem(KNOWN, "1");
+      }
+      let layer;
+      function clearLayer() { if (layer) { layer.remove(); layer = null; } }
+      function invite() {
+        clearLayer();
+        layer = document.createElement("div");
+        layer.className = "tour-scrim";
+        layer.innerHTML = '<div class="tour-invite"><p class="whisper">First time here?</p><h2 style="margin:0.35rem 0;">Want a click-along?</h2><p class="muted">Parent reads the small line. Child follows the big line. Bubbles point at the real buttons. No video.</p><div class="tour-actions"><button type="button" class="solid" id="tour-yes">Yes, show me</button><button type="button" class="ghost" id="tour-no">No thanks</button></div></div>';
+        document.body.appendChild(layer);
+        document.getElementById("tour-yes").onclick = () => run(0);
+        document.getElementById("tour-no").onclick = () => { mark("skipped"); clearLayer(); };
+      }
+      function run(i) {
+        if (i >= steps.length) {
+          mark("done");
+          clearLayer();
+          layer = document.createElement("div");
+          layer.className = "tour-scrim";
+          layer.innerHTML = '<div class="tour-invite"><p class="whisper">That is the walk-through</p><h2 style="margin:0.35rem 0;">Sort a book. Count the stamp.</h2><p class="muted">The jar is what stays after the shop, the envelope, and the stamp.</p><div class="tour-actions"><button type="button" class="solid" id="tour-fin">Open the shop</button></div></div>';
+          document.body.appendChild(layer);
+          document.getElementById("tour-fin").onclick = () => { clearLayer(); showTab("shop"); };
+          return;
+        }
+        const step = steps[i];
+        showTab(step.tab);
+        clearLayer();
+        const el = document.querySelector('[data-tour="' + step.target + '"]');
+        layer = document.createElement("div");
+        layer.className = "tour-layer";
+        const r = el ? el.getBoundingClientRect() : { top: 80, left: 24, width: 160, height: 48 };
+        const pad = 8;
+        const top = Math.max(0, r.top - pad), left = Math.max(0, r.left - pad), w = r.width + pad * 2, h = r.height + pad * 2;
+        layer.innerHTML =
+          '<div class="tour-pane" style="top:0;left:0;right:0;height:' + top + 'px"></div>' +
+          '<div class="tour-pane" style="top:' + top + 'px;left:0;width:' + left + 'px;height:' + h + 'px"></div>' +
+          '<div class="tour-pane" style="top:' + top + 'px;left:' + (left + w) + 'px;right:0;height:' + h + 'px"></div>' +
+          '<div class="tour-pane" style="top:' + (top + h) + 'px;left:0;right:0;bottom:0"></div>' +
+          '<div class="tour-ring" style="top:' + top + 'px;left:' + left + 'px;width:' + w + 'px;height:' + h + 'px"></div>' +
+          '<div class="tour-bubble" id="tour-bubble"><p class="whisper">Step ' + (i + 1) + ' of ' + steps.length + '</p><h2 style="margin:0.4rem 0;font-size:1.4rem;">' + step.child + '</h2><p class="muted">' + step.parent + '</p><div class="tour-actions"><button type="button" class="ghost" id="tour-back"' + (i === 0 ? " disabled" : "") + '>Back</button><button type="button" class="solid" id="tour-next">' + (i + 1 >= steps.length ? "Finish" : "Next") + '</button><button type="button" class="ghost" id="tour-skip">Skip</button></div></div>';
+        document.body.appendChild(layer);
+        const bubble = document.getElementById("tour-bubble");
+        const bh = bubble.offsetHeight, bw = bubble.offsetWidth;
+        let bt = r.bottom + 14;
+        if (bt + bh > window.innerHeight - 12) bt = Math.max(12, r.top - bh - 14);
+        let bl = r.left + r.width / 2 - bw / 2;
+        bl = Math.min(Math.max(12, bl), window.innerWidth - bw - 12);
+        bubble.style.top = bt + "px";
+        bubble.style.left = bl + "px";
+        document.getElementById("tour-next").onclick = () => run(i + 1);
+        document.getElementById("tour-back").onclick = () => run(Math.max(0, i - 1));
+        document.getElementById("tour-skip").onclick = () => { mark("skipped"); clearLayer(); };
+      }
+      window.addEventListener("shelfmark:start-tour", () => run(0));
+      if (new URLSearchParams(location.search).get("tour") === "1") run(0);
+      else if (!known()) setTimeout(invite, 200);
+    })();
   </script>
 </body>
 </html>
