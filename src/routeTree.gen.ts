@@ -15,6 +15,7 @@ import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as CrewRouteImport } from './routes/crew'
 import { Route as DeskRouteImport } from './routes/desk'
+import { Route as HuntRouteImport } from './routes/hunt'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as JarRouteImport } from './routes/jar'
 import { Route as ListingsRouteImport } from './routes/listings'
@@ -56,6 +57,11 @@ const CrewRoute = CrewRouteImport.update({
 const DeskRoute = DeskRouteImport.update({
   id: '/desk',
   path: '/desk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HuntRoute = HuntRouteImport.update({
+  id: '/hunt',
+  path: '/hunt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryRoute = InventoryRouteImport.update({
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/connect': typeof ConnectRoute
   '/crew': typeof CrewRoute
   '/desk': typeof DeskRoute
+  '/hunt': typeof HuntRoute
   '/inventory': typeof InventoryRoute
   '/jar': typeof JarRoute
   '/listings': typeof ListingsRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
   '/crew': typeof CrewRoute
   '/desk': typeof DeskRoute
+  '/hunt': typeof HuntRoute
   '/inventory': typeof InventoryRoute
   '/jar': typeof JarRoute
   '/listings': typeof ListingsRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/connect': typeof ConnectRoute
   '/crew': typeof CrewRoute
   '/desk': typeof DeskRoute
+  '/hunt': typeof HuntRoute
   '/inventory': typeof InventoryRoute
   '/jar': typeof JarRoute
   '/listings': typeof ListingsRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/crew'
     | '/desk'
+    | '/hunt'
     | '/inventory'
     | '/jar'
     | '/listings'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/crew'
     | '/desk'
+    | '/hunt'
     | '/inventory'
     | '/jar'
     | '/listings'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/crew'
     | '/desk'
+    | '/hunt'
     | '/inventory'
     | '/jar'
     | '/listings'
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   ConnectRoute: typeof ConnectRoute
   CrewRoute: typeof CrewRoute
   DeskRoute: typeof DeskRoute
+  HuntRoute: typeof HuntRoute
   InventoryRoute: typeof InventoryRoute
   JarRoute: typeof JarRoute
   ListingsRoute: typeof ListingsRoute
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/desk'
       fullPath: '/desk'
       preLoaderRoute: typeof DeskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hunt': {
+      id: '/hunt'
+      path: '/hunt'
+      fullPath: '/hunt'
+      preLoaderRoute: typeof HuntRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory': {
@@ -402,6 +422,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectRoute: ConnectRoute,
   CrewRoute: CrewRoute,
   DeskRoute: DeskRoute,
+  HuntRoute: HuntRoute,
   InventoryRoute: InventoryRoute,
   JarRoute: JarRoute,
   ListingsRoute: ListingsRoute,

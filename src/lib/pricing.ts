@@ -76,6 +76,12 @@ export function ceilCent(n: number): number {
   return Math.ceil(n * 100 - 1e-9) / 100;
 }
 
+/** Always round down a cent so a hunt max-pay never overshoots the keep. */
+export function floorCent(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.floor(n * 100 + 1e-9) / 100;
+}
+
 /** "$5.00", "5", "5.5", "1.00" → dollars. Empty or junk → null. */
 export function parseMoneyInput(raw: string): number | null {
   const t = raw.trim().replace(/[$,\s]/g, "");
@@ -209,6 +215,71 @@ export function kidCard(input: {
     choice,
     why,
   };
+}
+
+export type HuntVerdict = "buy" | "free" | "pass";
+
+export type HuntMath = {
+  expectedSale: number;
+  netAfterFees: number;
+  shop: "amazon" | "ebay";
+  stamp: number;
+  costs: number;
+  keep: number;
+  maxPay: number;
+  verdict: HuntVerdict;
+};
+
+/**
+ * Flip the listing math: given what the book will sell for, the most we can
+ * pay at the sale and still leave `keep` after shop, envelope, and stamp.
+ * Uses the better of Amazon vs eBay net. Rounds max-pay down.
+ */
+export function maxAcquisition(input: {
+  expectedSale: number;
+  format: BookFormat | string;
+  keep: number;
+  wePayStamp?: boolean;
+  pro?: boolean;
+}): HuntMath {
+  const sale = moneyPrice(input.expectedSale);
+  const card = kidCard({
+    listPrice: sale,
+    format: input.format,
+    wePayStamp: input.wePayStamp !== false,
+    pro: input.pro,
+  });
+  const shop: "amazon" | "ebay" = card.keepAmazon >= card.keepEbay ? "amazon" : "ebay";
+  const net = shop === "amazon" ? card.keepAmazon : card.keepEbay;
+  const keep = Math.max(0, input.keep);
+  const raw = floorCent(net - keep);
+  const verdict: HuntVerdict = raw > 0 ? "buy" : raw === 0 ? "free" : "pass";
+  return {
+    expectedSale: sale,
+    netAfterFees: moneyPrice(net),
+    shop,
+    stamp: card.stamp,
+    costs: moneyPrice(sale - net),
+    keep,
+    maxPay: raw,
+    verdict,
+  };
+}
+
+/** First few words so the aisle voice stays short. */
+export function spokenTitle(title: string): string {
+  const t = title.replace(/\s+/g, " ").trim();
+  if (!t || /^\d{10,13}$/.test(t)) return "";
+  const head = t.split(/[:(/]/)[0]?.trim() ?? t;
+  return head.split(/\s+/).slice(0, 4).join(" ");
+}
+
+export function spokenHunt(math: HuntMath, title?: string): string {
+  const head = spokenTitle(title ?? "");
+  const prefix = head ? `${head}. ` : "";
+  if (math.verdict === "pass") return `${prefix}Pass.`;
+  if (math.verdict === "free") return `${prefix}Only if it's free.`;
+  return `${prefix}Pay up to ${spokenMoney(math.maxPay)}.`;
 }
 
 /** Teaching comps so practice hits green, yellow, and red when the stamp is counted. */

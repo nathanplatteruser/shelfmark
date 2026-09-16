@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { detectIsbnFromFile, detectIsbnFromVideo, nativeBarcodeSupported } from "@/lib/barcode-detect";
 import { explainCameraError, openCamera, stopStream, useBindCamera } from "@/lib/camera";
 import { hydrateStack, type ScanDraft } from "@/lib/hydrate-stack";
+import { HuntStation } from "@/components/hunt-station";
 import { TargetKeepField, useTargetKeep } from "@/components/target-keep-field";
 import { looksLikeScanBurst, normalizeScannedCode } from "@/lib/isbn";
 import { DESK_CATALOG } from "@/lib/desk-catalog";
@@ -26,7 +27,7 @@ const GRADES: { id: ConditionGrade; word: string; hint: string }[] = [
   { id: "A", word: "Poor", hint: "Worn but complete" },
 ];
 
-type Phase = "pick" | "scan" | "grade" | "hydrate" | "files";
+type Phase = "pick" | "scan" | "grade" | "hydrate" | "files" | "hunt";
 type Mode = "single" | "stack";
 
 function shortName(isbn: string) {
@@ -241,13 +242,25 @@ export function StackScan({
 
   const pct = tick ? Math.round((tick.at / tick.total) * 100) : 0;
 
+  if (phase === "hunt") {
+    return (
+      <HuntStation
+        onClose={() => {
+          stopCamera();
+          setPhase("pick");
+          void startCamera();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-muted">Camera lane</p>
           <h1 className="font-display text-4xl font-semibold tracking-tight">
-            {phase === "pick" && "Stack or single"}
+            {phase === "pick" && "Stack, single, or hunt"}
             {phase === "scan" && (mode === "stack" ? "Keep scanning" : "One book")}
             {phase === "grade" && "Tap a word if it is not very good"}
             {phase === "hydrate" && "Writing the sheets"}
@@ -271,7 +284,7 @@ export function StackScan({
       />
 
       {phase === "pick" && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <button
             type="button"
             onClick={() => pickMode("stack")}
@@ -287,6 +300,17 @@ export function StackScan({
           >
             <span className="block font-display text-3xl font-semibold">Single</span>
             <span className="mt-2 block text-sm opacity-80">One book. Beep, then we stop and you check the grade.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              stopCamera();
+              setPhase("hunt");
+            }}
+            className="min-h-32 rounded-xl bg-stamp px-6 py-6 text-left text-stamp-fg"
+          >
+            <span className="block font-display text-3xl font-semibold">Hunt</span>
+            <span className="mt-2 block text-sm opacity-80">Out buying. Scan one, hear the max you can pay, next book. No waiting on a pile.</span>
           </button>
         </div>
       )}

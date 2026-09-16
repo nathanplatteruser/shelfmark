@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Camera, Volume2, VolumeX } from "lucide-react";
+import { Camera, Crosshair, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { StackScan } from "@/components/stack-scan";
@@ -358,6 +358,13 @@ export function KidShop({ onSaved }: { onSaved?: () => void }) {
             <Camera className="size-4" />
             Camera
           </button>
+          <Link
+            to="/hunt"
+            className="inline-flex h-11 items-center gap-2 rounded-md bg-stamp px-3 text-sm text-stamp-fg no-underline"
+          >
+            <Crosshair className="size-4" />
+            Hunt
+          </Link>
           <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-rule bg-elevated px-3 text-sm">
             Snap barcode
             <input
@@ -401,6 +408,16 @@ export function KidShop({ onSaved }: { onSaved?: () => void }) {
         playsInline
         autoPlay
       />
+
+      <Link
+        to="/hunt"
+        className="block min-h-28 rounded-xl bg-stamp px-6 py-6 text-stamp-fg no-underline"
+      >
+        <span className="block font-display text-3xl font-semibold">Hunt</span>
+        <span className="mt-2 block text-sm opacity-85">
+          Phone in the aisle. Scan one book, hear the most you can pay, next book. Reverse the shop, the envelope, and the stamp from your keep number.
+        </span>
+      </Link>
 
       <Card className="p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

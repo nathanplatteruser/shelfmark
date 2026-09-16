@@ -5,6 +5,7 @@ import {
   Bookmark,
   Clapperboard,
   Coins,
+  Crosshair,
   Keyboard,
   Layers,
   LayoutGrid,
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const KID_NAV = [
   { to: "/", label: "Shop", icon: ScanBarcode },
+  { to: "/hunt", label: "Hunt", icon: Crosshair },
   { to: "/pile", label: "Pile", icon: BookOpen },
   { to: "/jar", label: "Jar", icon: Coins },
   { to: "/story", label: "Story", icon: Bookmark },
