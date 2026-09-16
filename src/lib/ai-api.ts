@@ -4,6 +4,7 @@ import type { BookFormat, ConditionGrade, DefectId, ListFormat } from "@/lib/typ
 import { buildConditionDescription, formatLabel } from "@/lib/condition";
 import { buildEbayTitle, clipTitle, heuristicPrice, moneyPrice } from "@/lib/pricing";
 import { estimateIsbnComp, isGenericTag } from "@/lib/comps-api";
+import { fallbackChannelCopy, type CopySource } from "@/lib/channel-copy";
 
 const listingSchema = z.object({
   title: z.string(),
@@ -22,7 +23,7 @@ const listingSchema = z.object({
 
 type GrokChoice = { message?: { content?: string } };
 
-async function grokJson(prompt: string, images: string[], maxTokens: number): Promise<string | null> {
+async function grokJson(prompt: string, images: string[], maxTokens: number, timeoutMs = 12000): Promise<string | null> {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) return null;
 
@@ -38,7 +39,7 @@ async function grokJson(prompt: string, images: string[], maxTokens: number): Pr
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(timeoutMs),
     body: JSON.stringify({
       model: "grok-4.5",
       max_tokens: maxTokens,
@@ -48,7 +49,7 @@ async function grokJson(prompt: string, images: string[], maxTokens: number): Pr
         {
           role: "system",
           content:
-            "You write used-book eBay listings. Return JSON only. Be precise, honest about flaws, and never invent signed/first-edition claims.",
+            "You write used-book listing copy. Return JSON only. Be precise, honest about flaws, and never invent signed/first-edition claims.",
         },
         { role: "user", content },
       ],
@@ -211,6 +212,127 @@ Rules:
       },
       polished: true,
     };
+  });
+
+const pileBookSchema = z.object({
+  isbn13: z.string(),
+  title: z.string(),
+  author: z.string(),
+  publisher: z.string().optional(),
+  publishedYear: z.string().optional(),
+  format: z.string(),
+  pages: z.number().nullable().optional(),
+  language: z.string().optional(),
+  subjects: z.string().optional(),
+  catalogBlurb: z.string().optional(),
+  conditionGrade: z.string(),
+  defects: z.array(z.string()).optional(),
+});
+
+export type ChannelCopyOut = {
+  isbn13: string;
+  ebayTitle: string;
+  ebayDescription: string;
+  amazonItemNote: string;
+  conditionDescription: string;
+  polished: boolean;
+};
+
+function asSource(b: z.infer<typeof pileBookSchema>): CopySource {
+  return {
+    isbn13: b.isbn13,
+    title: b.title,
+    author: b.author,
+    publisher: b.publisher,
+    publishedYear: b.publishedYear,
+    format: b.format,
+    pages: b.pages,
+    language: b.language,
+    subjects: b.subjects,
+    catalogBlurb: b.catalogBlurb,
+    conditionGrade: b.conditionGrade,
+  };
+}
+
+/**
+ * One pass after grades. No typing. eBay gets a one-off listing (content + this copy).
+ * Amazon is ISBN catalog — item note is this copy only.
+ */
+export const writeChannelCopy = createServerFn({ method: "POST" })
+  .validator((input: unknown) => z.object({ books: z.array(pileBookSchema).min(1).max(40) }).parse(input))
+  .handler(async ({ data }): Promise<{ listings: ChannelCopyOut[] }> => {
+    const books = data.books;
+    const fallbacks = books.map((b) => fallbackChannelCopy(asSource(b)));
+    const byIsbn = new Map(fallbacks.map((f) => [f.isbn13, f]));
+    const chunkSize = 4;
+
+    for (let i = 0; i < books.length; i += chunkSize) {
+      const chunk = books.slice(i, i + chunkSize);
+      const payload = chunk.map((b, n) => ({
+        n: n + 1,
+        isbn13: b.isbn13,
+        title: b.title,
+        author: b.author,
+        publisher: b.publisher ?? "",
+        year: b.publishedYear ?? "",
+        format: b.format,
+        pages: b.pages ?? "",
+        subjects: b.subjects ?? "",
+        grade: b.conditionGrade,
+        defects: (b.defects ?? []).join(", ") || "none noted",
+        catalogBlurb: (b.catalogBlurb ?? "").slice(0, 900),
+      }));
+      const prompt = `Write buyer-ready used-book listing copy. The family does not type. One JSON object.
+
+Each book needs TWO channel versions:
+
+ebayDescription — eBay is a ONE-OFF listing. The buyer cannot see an Amazon catalog page. Include:
+1) what the book is (content, who it is for, no spoilers; 2–4 short paragraphs; use catalogBlurb if present, rewrite for a buyer, do not copy-paste blindly)
+2) this physical copy's condition from the grade/defects
+3) packed from Lincoln, Nebraska, USPS Media Mail
+Plain text, no HTML, no ALL CAPS, no "L@@K".
+
+amazonItemNote — Amazon is an ISBN CATALOG listing. Amazon already shows the official book description. This field is ONLY the seller note about THIS copy. 1–3 sentences, max 900 characters. Grade, wear, completeness. Do not retell the plot.
+
+ebayTitle — max 80 characters, title + author + format if they fit. No ALL CAPS.
+conditionDescription — one tight paragraph of THIS copy, shared as the condition line.
+
+Books:
+${JSON.stringify(payload, null, 2)}
+
+Return JSON:
+{ "listings": [ { "isbn13", "ebayTitle", "ebayDescription", "amazonItemNote", "conditionDescription" } ] }
+
+Rules:
+- Never claim like-new if the grade is not LN.
+- Never invent signed, first edition, or dust-jacket facts.
+- Keep amazonItemNote free of plot.
+- Every isbn13 in the input must appear once.`;
+
+      const raw = await grokJson(prompt, [], 2800, 40000);
+      const json = parseJson(raw);
+      const rows = Array.isArray(json?.listings) ? json.listings : [];
+      for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
+        const rec = row as Record<string, unknown>;
+        const isbn = String(rec.isbn13 || "");
+        const prev = byIsbn.get(isbn);
+        if (!prev) continue;
+        const ebayDescription = String(rec.ebayDescription || "").trim();
+        const amazonItemNote = String(rec.amazonItemNote || "").trim();
+        if (!ebayDescription || !amazonItemNote) continue;
+        byIsbn.set(isbn, {
+          isbn13: isbn,
+          ebayTitle: clipTitle(String(rec.ebayTitle || prev.ebayTitle)),
+          ebayDescription,
+          amazonItemNote: amazonItemNote.slice(0, 1000),
+          conditionDescription: String(rec.conditionDescription || amazonItemNote).trim(),
+          polished: true,
+        });
+      }
+    }
+
+    return { listings: books.map((b) => byIsbn.get(b.isbn13) ?? fallbackChannelCopy(asSource(b))) };
   });
 
 const assessSchema = z.object({

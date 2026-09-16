@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { detectIsbnFromFile, detectIsbnFromVideo, nativeBarcodeSupported } from "@/lib/barcode-detect";
 import { explainCameraError, openCamera, stopStream, useBindCamera } from "@/lib/camera";
-import { hydrateDraft, type ScanDraft } from "@/lib/hydrate-stack";
+import { hydrateStack, type ScanDraft } from "@/lib/hydrate-stack";
 import { TargetKeepField, useTargetKeep } from "@/components/target-keep-field";
 import { looksLikeScanBurst, normalizeScannedCode } from "@/lib/isbn";
 import { DESK_CATALOG } from "@/lib/desk-catalog";
@@ -195,22 +195,19 @@ export function StackScan({
   async function runHydrate() {
     setPhase("hydrate");
     const rows = draftsRef.current.length ? draftsRef.current : drafts;
-    const out: CopyRecord[] = [];
-    for (let i = 0; i < rows.length; i += 1) {
-      const d = rows[i];
-      setTick({ at: i + 1, total: rows.length, title: shortName(d.isbn), step: "lookup" });
-      try {
-        setTick({ at: i + 1, total: rows.length, title: shortName(d.isbn), step: "write" });
-        const copy = await hydrateDraft(d, { targetKeep });
-        out.push(copy);
-        setHydrated([...out]);
-        setTick({ at: i + 1, total: rows.length, title: copy.title, step: "saved" });
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : `Missed ${d.isbn}`);
-      }
+    try {
+      const out = await hydrateStack(rows, {
+        targetKeep,
+        onTick: (t) => {
+          setTick({ at: t.at, total: t.total, title: t.title || shortName(t.isbn), step: t.step });
+        },
+      });
+      setHydrated(out);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not write the listings.");
     }
     setPhase("files");
-    say("Sheets are ready.");
+    say("Descriptions are on the sheets.");
     onFinished?.();
   }
 
@@ -374,7 +371,7 @@ export function StackScan({
             onClick={() => void runHydrate()}
             className="h-14 w-full rounded-xl bg-cloth text-lg font-medium text-cloth-fg"
           >
-            Looks right — write the sheets
+            Looks right — write descriptions
           </button>
         </div>
       )}
@@ -382,8 +379,8 @@ export function StackScan({
       {phase === "hydrate" && tick && (
         <Card className="space-y-4 p-6">
           <p className="text-sm uppercase tracking-[0.18em] text-muted">
-            {tick.step === "lookup" && "Looking up"}
-            {tick.step === "write" && "Writing description"}
+            {tick.step === "lookup" && "Looking up the book"}
+            {tick.step === "write" && "Writing buyer copy — eBay listing and Amazon copy note"}
             {tick.step === "saved" && "On the sheet"}
           </p>
           <p className="font-display text-3xl font-semibold">{tick.title}</p>
@@ -411,7 +408,7 @@ export function StackScan({
         <div className="space-y-4">
           <TargetKeepField value={targetKeep} onChange={setTargetKeep} />
           <p className="text-sm text-muted">
-            {hydrated.length} {hydrated.length === 1 ? "book" : "books"} hydrated. Download, then upload. Nothing is live until you do.
+            {hydrated.length} {hydrated.length === 1 ? "book" : "books"} with descriptions. eBay gets the full listing (what the book is + this copy). Amazon already has the catalog blurb — we send this copy’s condition as the item note. Download, then upload. Nothing is live until you do.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <button
@@ -467,6 +464,9 @@ export function StackScan({
                 <p className="text-sm text-muted">
                   {gradeLabel(c.conditionGrade)} · {c.isbn13} · {c.listPrice == null ? "" : money(c.listPrice)}
                 </p>
+                {c.ebayDescription ? (
+                  <p className="mt-1 line-clamp-3 text-sm text-muted">{c.ebayDescription}</p>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -61,6 +61,7 @@ export type CatalogBook = {
   coverUrl: string;
   subjects: string;
   source: string;
+  description: string;
 };
 
 export type CopyRecord = {

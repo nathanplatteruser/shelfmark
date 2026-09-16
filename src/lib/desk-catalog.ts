@@ -24,6 +24,7 @@ function book(
     coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg`,
     subjects,
     source: "Desk catalog",
+    description: "",
   };
 }
 

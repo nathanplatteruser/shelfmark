@@ -325,6 +325,7 @@ export function DeskStation({ onSaved }: { onSaved: () => void }) {
         coverUrl: b?.coverUrl || photos[0],
         subjects: b?.subjects || "",
         source: "Title-page photo",
+        description: b?.description || "",
       }));
       say(`${res.title}. ${res.author}.`);
       toast.success("Title page read.");

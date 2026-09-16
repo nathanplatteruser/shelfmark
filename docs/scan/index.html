@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Scan night — Shelfmark</title>
+  <meta name="description" content="Open the camera. Beep per ISBN. Download eBay and Amazon sheets. Listed is not sold." />
+  <meta name="theme-color" content="#2F463C" />
+  <link rel="icon" type="image/svg+xml" href="../shelfmark/favicon.svg" />
+  <link rel="canonical" href="https://nathanplatteruser.github.io/childrens-books/scan/" />
+  <meta property="og:title" content="Scan night — Shelfmark" />
+  <meta property="og:description" content="Webcam or grocery gun. Beep. Unique ISBN tag. eBay and Amazon files for tonight." />
+  <meta property="og:image" content="https://nathanplatteruser.github.io/childrens-books/og.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,650&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #f3eee4; --elevated: #faf7f1; --ink: #1c1916; --muted: #6f6a62;
+      --subtle: #9a948a; --cloth: #2f463c; --cloth-fg: #f3eee4; --rule: #c9c3b8;
+      --stamp: #8b3a2a; --stamp-fg: #faf7f1; --good: #3f6b4a; --good-fg: #f3eee4;
+      --warn: #8a5a2b; --display: "Fraunces", ui-serif, Georgia, serif;
+      --sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.5; }
+    button { font-family: inherit; cursor: pointer; }
+    button:disabled { cursor: default; opacity: 0.4; }
+    a { color: var(--ink); }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--rule);
+      background: color-mix(in oklab, var(--paper) 90%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .bar { max-width: 44rem; margin: 0 auto; padding: 0.85rem 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .mark { width: 2.25rem; height: 2.25rem; display: grid; place-items: center; background: var(--cloth); color: var(--cloth-fg); border-radius: 4px; font-family: var(--display); font-size: 11px; letter-spacing: 0.18em; font-weight: 600; text-decoration: none; }
+    .brand { font-family: var(--display); font-size: 1.15rem; font-weight: 600; }
+    .whisper { display: block; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+    main { max-width: 44rem; margin: 0 auto; padding: 1.5rem 1.25rem 5rem; }
+    h1 { font-family: var(--display); font-size: clamp(1.85rem, 5vw, 2.6rem); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0.15rem 0 0.5rem; }
+    h2 { font-family: var(--display); font-weight: 600; margin: 0 0 0.4rem; }
+    .lede { max-width: 38rem; color: var(--muted); }
+    .card { background: var(--elevated); border: 1px solid var(--rule); border-radius: 16px; padding: 1.25rem; box-shadow: 0 1px 0 rgb(28 25 22 / 0.04), 0 12px 32px rgb(28 25 22 / 0.06); }
+    .muted { color: var(--muted); }
+    .ghost, .solid, .bin {
+      height: 3.15rem; border-radius: 10px; padding: 0 1.1rem; font-size: 1rem; min-width: 6rem;
+    }
+    .ghost { background: transparent; border: 1px solid var(--rule); color: var(--ink); }
+    .solid { background: var(--cloth); color: var(--cloth-fg); border: 0; }
+    .stamp { background: var(--stamp); color: var(--stamp-fg); border: 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .stack { display: flex; flex-direction: column; gap: 0.75rem; }
+    .pick { width: 100%; min-height: 5.5rem; text-align: left; border: 0; border-radius: 16px; padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: 0.15rem; }
+    .pick b { font-family: var(--display); font-size: 1.45rem; }
+    .pick.stack-mode { background: var(--cloth); color: var(--cloth-fg); }
+    .pick.single-mode { background: var(--good); color: var(--good-fg); }
+    .stage { position: relative; background: #111; border-radius: 16px; overflow: hidden; min-height: 16rem; }
+    .stage video { width: 100%; display: block; max-height: 52vh; object-fit: cover; background: #111; }
+    .stage .aim {
+      position: absolute; left: 12%; right: 12%; top: 38%; height: 22%;
+      border: 2px solid #f3eee4; border-radius: 8px; pointer-events: none; opacity: 0.85;
+    }
+    .count {
+      position: absolute; top: 0.75rem; left: 0.75rem;
+      background: var(--stamp); color: var(--stamp-fg);
+      font-family: var(--display); padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 1.05rem;
+    }
+    .isbn-list { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.85rem; }
+    .isbn-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--rule); padding: 0.4rem 0; }
+    .isbn-row:last-child { border: 0; }
+    .grades { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .grades button { height: 2.4rem; border-radius: 8px; border: 1px solid var(--rule); background: transparent; padding: 0 0.65rem; font-size: 0.88rem; }
+    .grades button.on { background: var(--cloth); color: var(--cloth-fg); border-color: var(--cloth); }
+    .bar-track { height: 0.55rem; background: var(--rule); border-radius: 99px; overflow: hidden; margin: 0.75rem 0; }
+    .bar-fill { height: 100%; background: var(--cloth); width: 0; transition: width 0.25s ease; }
+    .keep { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .keep input {
+      width: 7.5rem; height: 3rem; border: 1px solid var(--rule); border-radius: 8px;
+      font: inherit; font-size: 1.2rem; padding: 0 0.7rem; background: var(--elevated);
+    }
+    .file-btn { width: 100%; }
+    .warn { color: var(--stamp); font-weight: 600; }
+    .hidden { display: none !important; }
+    label.snap { display: inline-flex; align-items: center; }
+    label.snap input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .foot { margin-top: 1.5rem; color: var(--muted); font-size: 0.9rem; }
+    .price { font-family: var(--display); font-variant-numeric: tabular-nums; font-size: 1.15rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="mark" href="../">SM</a>
+      <span>
+        <span class="brand">Scan night</span>
+        <span class="whisper">Camera · beep · sheets</span>
+      </span>
+    </div>
+  </header>
+  <main>
+    <section id="phase-pick">
+      <p class="whisper">Tonight at home</p>
+      <h1>Point the camera at the barcode. Beep means it counted.</h1>
+      <p class="lede">Laptop webcam or phone. A grocery gun works too. When the stack is done we write the eBay and Amazon sheets. Nothing publishes until you upload.</p>
+      <div class="stack" style="margin-top:1.25rem;">
+        <button type="button" class="pick stack-mode" id="btn-stack"><b>Stack</b><span>Many books. Keep scanning. Tap Done when the pile is finished.</span></button>
+        <button type="button" class="pick single-mode" id="btn-single"><b>Single</b><span>One book, then we grade it.</span></button>
+      </div>
+      <p class="muted" style="margin-top:1rem;font-size:0.9rem;">Allow the camera when the browser asks. Safari and Chrome both work. Hold the barcode in the pale box until you hear the beep.</p>
+    </section>
+
+    <section id="phase-scan" class="hidden">
+      <p class="whisper" id="scan-mode-label">Stack</p>
+      <h1>Scan. Listen for the beep.</h1>
+      <div class="stage" style="margin:1rem 0;">
+        <video id="cam" playsinline muted autoplay></video>
+        <div class="aim" aria-hidden="true"></div>
+        <span class="count" id="scan-count">0</span>
+      </div>
+      <p class="muted" id="cam-note"></p>
+      <div class="row" style="margin-top:0.85rem;">
+        <button type="button" class="solid" id="btn-done">Done scanning</button>
+        <label class="ghost snap" style="display:inline-flex;align-items:center;justify-content:center;">
+          Snap a photo
+          <input id="snap" type="file" accept="image/*" capture="environment" />
+        </label>
+        <button type="button" class="ghost" id="btn-recam">Turn camera on</button>
+      </div>
+      <div class="isbn-list" id="scan-list"></div>
+    </section>
+
+    <section id="phase-grade" class="hidden">
+      <p class="whisper">Grade</p>
+      <h1>Very Good on all. Tap a word if one is better or worse.</h1>
+      <div class="card keep" style="margin:1rem 0;">
+        <label for="keep"><strong>I want to keep</strong></label>
+        <span>$</span>
+        <input id="keep" type="text" inputmode="decimal" placeholder="1.00" />
+        <span class="muted">per book after the shop, envelope, and stamp. Leave blank for market only.</span>
+      </div>
+      <div class="isbn-list" id="grade-list"></div>
+      <div class="row" style="margin-top:1rem;">
+        <button type="button" class="solid" id="btn-hydrate">Write descriptions and sheets</button>
+        <button type="button" class="ghost" id="btn-back-scan">Scan more</button>
+      </div>
+    </section>
+
+    <section id="phase-hydrate" class="hidden">
+      <p class="whisper">Hydrate</p>
+      <h1>Looking up each ISBN, then writing buyer copy.</h1>
+      <p class="lede" id="hydrate-step">Starting…</p>
+      <div class="bar-track"><div class="bar-fill" id="hydrate-bar"></div></div>
+    </section>
+
+    <section id="phase-files" class="hidden">
+      <p class="whisper">Sheets are ready</p>
+      <h1>Download, then upload. Listed is not sold.</h1>
+      <p class="lede">eBay gets the full listing — what the book is, plus this copy. Amazon already has the catalog blurb; we send this copy’s condition as the item note. A grown-up still has to upload. The shop does not publish by itself.</p>
+      <div class="stack" style="margin:1.15rem 0;">
+        <button type="button" class="solid file-btn" id="btn-ebay">Download eBay sheet</button>
+        <button type="button" class="solid file-btn" id="btn-ebay-go" style="background:var(--stamp);">Click to eBay Upload</button>
+        <button type="button" class="ghost file-btn" id="btn-amazon">Download Amazon sheet</button>
+        <button type="button" class="ghost file-btn" id="btn-ledger">Download session ledger</button>
+      </div>
+      <div class="isbn-list" id="file-list"></div>
+      <div class="row" style="margin-top:1rem;">
+        <button type="button" class="ghost" id="btn-again">Scan another stack</button>
+        <a class="ghost" href="../shelfmark/" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Practice bins</a>
+      </div>
+      <p class="foot">Amazon upload: sellercentral.amazon.com/listing/upload · eBay: ebay.com/sh/reports. Unique tags come from the ISBN plus Google Books retail when it exists — not a $4.99 clamp.</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+  <script>
+  (function () {
+    const EBAY_UPLOAD = "https://www.ebay.com/sh/reports";
+    const AMAZON_REFERRAL = 0.15, AMAZON_CLOSING = 1.8, STAMP_FIRST = 4.47, STAMP_EXTRA = 0.75, MAILER = 0.4;
+    const EBAY_FVF = 0.153, EBAY_FEE_LO = 0.3, EBAY_FEE_HI = 0.4;
+    const GRADE_MULT = { LN: 0.62, VG: 0.48, G: 0.34, A: 0.2 };
+    const GRADE_WORD = { LN: "Excellent", VG: "Very Good", G: "Good", A: "Poor" };
+    const EBAY_COND = { LN: "2750", VG: "4000", G: "5000", A: "6000" };
+    const AMAZON_COND = { LN: "1", VG: "2", G: "3", A: "4" };
+
+    const state = {
+      mode: "stack",
+      phase: "pick",
+      drafts: [],
+      copies: [],
+      stream: null,
+      scanning: false,
+      last: { code: "", t: 0 },
+      burst: { buf: "", t: 0 },
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const show = (id) => {
+      ["phase-pick", "phase-scan", "phase-grade", "phase-hydrate", "phase-files"].forEach((p) => {
+        $(p).classList.toggle("hidden", p !== id);
+      });
+    };
+
+    function digitsOnly(raw) { return String(raw || "").replace(/[^0-9Xx]/g, "").toUpperCase(); }
+    function isbn13Check(body12) {
+      const sum = body12.split("").reduce((a, ch, i) => a + Number(ch) * (i % 2 === 0 ? 1 : 3), 0);
+      return String((10 - (sum % 10)) % 10);
+    }
+    function isbn10To13(isbn10) {
+      const d = digitsOnly(isbn10);
+      const body = "978" + d.slice(0, 9);
+      return body + isbn13Check(body);
+    }
+    function normalize(raw) {
+      const d = digitsOnly(raw);
+      if (!d) return null;
+      if (d.length === 18 && (d.startsWith("978") || d.startsWith("979"))) return d.slice(0, 13);
+      if (d.length === 13) return d;
+      if (d.length === 12) return "0" + d;
+      if (d.length === 10) return isbn10To13(d);
+      return null;
+    }
+    function money(n) { return "$" + (Number.isFinite(n) ? n : 0).toFixed(2); }
+    function moneyPrice(n) { if (!Number.isFinite(n) || n <= 0) return 0; return Math.round(n * 100) / 100; }
+    function ceilCent(n) { return Math.ceil(n * 100 - 1e-9) / 100; }
+    function isbnSalt(isbn) {
+      let h = 2166136261;
+      for (let i = 0; i < isbn.length; i++) { h ^= isbn.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return ((h >>> 0) % 241) / 100;
+    }
+    function weight(format) {
+      if (format === "textbook") return 3.2;
+      if (format === "hardcover") return 1.1;
+      if (format === "mass-market") return 0.4;
+      return 0.5;
+    }
+    function stamp(format) {
+      const lb = Math.max(1, Math.ceil(weight(format)));
+      return STAMP_FIRST + Math.max(0, lb - 1) * STAMP_EXTRA;
+    }
+    function listForKeep(keep, format) {
+      const fixed = AMAZON_CLOSING + MAILER + stamp(format);
+      return ceilCent((Math.max(0, keep) + fixed) / (1 - AMAZON_REFERRAL));
+    }
+    function csvEsc(v) {
+      const s = String(v ?? "");
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+    function tsvEsc(v) { return String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ").trim(); }
+    function clipTitle(t, max) {
+      const s = String(t || "").replace(/\s+/g, " ").trim();
+      return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + "…";
+    }
+    function todayStamp() {
+      const d = new Date();
+      return String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+    }
+    function sku(i) { return "SM-" + todayStamp() + "-" + String(i + 1).padStart(4, "0"); }
+    function download(name, text, mime) {
+      const blob = new Blob([text], { type: (mime || "text/csv") + ";charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+    function beep(ok) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const now = ctx.currentTime;
+      function tone(freq, start, dur) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "square"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.05, now + start);
+        g.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(now + start); o.stop(now + start + dur);
+      }
+      if (ok) { tone(980, 0, 0.07); tone(1310, 0.08, 0.09); }
+      else { tone(220, 0, 0.2); }
+      setTimeout(() => ctx.close(), 400);
+    }
+
+    function parseKeep() {
+      const t = $("keep").value.trim().replace(/[$,\s]/g, "");
+      if (!t) return null;
+      const n = Number(t);
+      return Number.isFinite(n) && n >= 0 ? moneyPrice(n) : null;
+    }
+
+    function addIsbn(raw) {
+      const isbn = normalize(raw);
+      if (!isbn) return false;
+      if (!(isbn.startsWith("978") || isbn.startsWith("979") || isbn.length >= 12)) return false;
+      const now = Date.now();
+      if (state.last.code === isbn && now - state.last.t < 1400) return true;
+      state.last = { code: isbn, t: now };
+      state.drafts.push({ key: isbn + "-" + now, isbn, grade: "VG", title: isbn });
+      beep(true);
+      renderScanList();
+      $("scan-count").textContent = String(state.drafts.length);
+      if (state.mode === "single") {
+        stopCam();
+        goGrade();
+      }
+      return true;
+    }
+
+    function renderScanList() {
+      $("scan-list").innerHTML = state.drafts.map((d, i) => (
+        '<div class="isbn-row"><span>' + (i + 1) + ". " + d.isbn + '</span>' +
+        '<button type="button" class="ghost" data-drop="' + d.key + '" style="height:2.2rem;min-width:auto;">Remove</button></div>'
+      )).join("");
+    }
+
+    $("scan-list").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-drop]");
+      if (!btn) return;
+      state.drafts = state.drafts.filter((d) => d.key !== btn.getAttribute("data-drop"));
+      $("scan-count").textContent = String(state.drafts.length);
+      renderScanList();
+    });
+
+    async function openCam() {
+      $("cam-note").textContent = "";
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        $("cam-note").textContent = "This browser has no camera API. Snap a photo of the barcode, or use a grocery gun.";
+        return;
+      }
+      const tries = [
+        { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { audio: false, video: { facingMode: { ideal: "environment" } } },
+        { audio: false, video: true },
+      ];
+      let last = null;
+      for (const c of tries) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(c);
+          stopCam();
+          state.stream = stream;
+          const v = $("cam");
+          v.setAttribute("playsinline", "true");
+          v.muted = true; v.playsInline = true; v.autoplay = true;
+          v.srcObject = stream;
+          try { await v.play(); } catch (e) { /* gesture */ }
+          state.scanning = true;
+          loopDetect();
+          return;
+        } catch (err) { last = err; }
+      }
+      $("cam-note").textContent = last && last.name === "NotAllowedError"
+        ? "Camera permission was denied. Allow it, or snap a photo of the barcode."
+        : "Could not open a camera. Snap a photo, or use a grocery gun plugged into the laptop.";
+    }
+    function stopCam() {
+      state.scanning = false;
+      if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
+      state.stream = null;
+      const v = $("cam");
+      if (v) v.srcObject = null;
+    }
+
+    let detector = null;
+    try {
+      if (window.BarcodeDetector) detector = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
+    } catch (e) { detector = null; }
+
+    let zxing = null;
+    async function getZxing() {
+      if (zxing) return zxing;
+      try {
+        if (window.ZXing && ZXing.BrowserMultiFormatReader) {
+          zxing = new ZXing.BrowserMultiFormatReader();
+          return zxing;
+        }
+      } catch (e) { /* fall through */ }
+      try {
+        const mod = await import("https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm");
+        zxing = new mod.BrowserMultiFormatReader();
+        return zxing;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function drawFrame(video) {
+      if (!video.videoWidth) return null;
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    let handling = false;
+    async function loopDetect() {
+      if (!state.scanning) return;
+      const video = $("cam");
+      if (video && video.readyState >= 2 && !handling && state.phase === "scan") {
+        handling = true;
+        try {
+          let hit = null;
+          if (detector) {
+            try {
+              const codes = await detector.detect(video);
+              for (const c of codes) {
+                if (normalize(c.rawValue)) { hit = c.rawValue; break; }
+              }
+            } catch (e) { /* empty */ }
+          }
+          if (!hit) {
+            const canvas = drawFrame(video);
+            const reader = await getZxing();
+            if (canvas && reader) {
+              try {
+                const result = reader.decodeFromCanvas(canvas);
+                hit = result && result.getText && result.getText();
+              } catch (e) { /* no code in frame */ }
+            }
+          }
+          if (hit) addIsbn(hit);
+        } finally { handling = false; }
+      }
+      if (state.scanning) setTimeout(loopDetect, detector ? 280 : 700);
+    }
+
+    async function fromFile(file) {
+      if (!file) return;
+      try {
+        if (detector) {
+          const bmp = await createImageBitmap(file);
+          const codes = await detector.detect(bmp);
+          for (const c of codes) { if (addIsbn(c.rawValue)) return; }
+        }
+      } catch (e) { /* fall through */ }
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+        });
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        const reader = await getZxing();
+        if (reader) {
+          const result = reader.decodeFromCanvas(canvas);
+          if (result && addIsbn(result.getText())) return;
+        }
+        beep(false);
+        $("cam-note").textContent = "Could not read that barcode. Try again closer, or a grocery gun.";
+      } catch (e) {
+        beep(false);
+        $("cam-note").textContent = "Could not read that barcode.";
+      } finally { URL.revokeObjectURL(url); }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (state.phase !== "scan" && state.phase !== "pick") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const burst = state.burst;
+      const now = Date.now();
+      if (now - burst.t > 80) burst.buf = "";
+      burst.t = now;
+      if (e.key === "Enter") {
+        const code = burst.buf; burst.buf = "";
+        const d = digitsOnly(code);
+        if (d.length >= 10 && d.length <= 18) addIsbn(code);
+        return;
+      }
+      if (e.key.length === 1) burst.buf += e.key;
+    });
+
+    function startMode(mode) {
+      state.mode = mode;
+      state.phase = "scan";
+      $("scan-mode-label").textContent = mode === "stack" ? "Stack" : "Single";
+      show("phase-scan");
+      openCam();
+    }
+    $("btn-stack").onclick = () => startMode("stack");
+    $("btn-single").onclick = () => startMode("single");
+    $("btn-recam").onclick = () => openCam();
+    $("snap").onchange = (e) => fromFile(e.target.files && e.target.files[0]);
+    $("btn-done").onclick = () => {
+      if (!state.drafts.length) {
+        $("cam-note").textContent = "Scan at least one book first.";
+        beep(false);
+        return;
+      }
+      stopCam();
+      goGrade();
+    };
+
+    function goGrade() {
+      state.phase = "grade";
+      show("phase-grade");
+      const saved = localStorage.getItem("shelfmark.targetKeep");
+      if (saved && !$("keep").value) $("keep").value = saved;
+      $("grade-list").innerHTML = state.drafts.map((d) => (
+        '<div class="card" style="margin-bottom:0.65rem;">' +
+        '<p style="margin:0 0 0.45rem;"><strong>' + d.isbn + '</strong></p>' +
+        '<div class="grades" data-key="' + d.key + '">' +
+        ["LN","VG","G","A"].map((g) =>
+          '<button type="button" data-g="' + g + '"' + (d.grade === g ? ' class="on"' : "") + ">" + GRADE_WORD[g] + "</button>"
+        ).join("") +
+        "</div></div>"
+      )).join("");
+    }
+    $("grade-list").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-g]");
+      if (!btn) return;
+      const key = btn.parentElement.getAttribute("data-key");
+      const g = btn.getAttribute("data-g");
+      const d = state.drafts.find((x) => x.key === key);
+      if (!d) return;
+      d.grade = g;
+      btn.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+    });
+    $("keep").addEventListener("change", () => {
+      const k = parseKeep();
+      if (k != null) localStorage.setItem("shelfmark.targetKeep", String(k.toFixed(2)));
+      else localStorage.removeItem("shelfmark.targetKeep");
+    });
+    $("btn-back-scan").onclick = () => {
+      state.phase = "scan";
+      show("phase-scan");
+      renderScanList();
+      openCam();
+    };
+    $("btn-hydrate").onclick = runHydrate;
+    $("btn-again").onclick = () => {
+      state.drafts = [];
+      state.copies = [];
+      state.phase = "pick";
+      show("phase-pick");
+    };
+
+    async function lookup(isbn) {
+      const book = { isbn13: isbn, isbn10: "", title: isbn, author: "", publisher: "", year: "", pages: null, format: "paperback", desc: "", retail: null };
+      try {
+        const gb = await fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:" + encodeURIComponent(isbn), { headers: { Accept: "application/json" } });
+        if (gb.ok) {
+          const json = await gb.json();
+          const v = json.items && json.items[0] && json.items[0].volumeInfo;
+          const sale = json.items && json.items[0] && json.items[0].saleInfo;
+          if (v && v.title) {
+            book.title = v.title;
+            book.author = (v.authors || []).join(", ");
+            book.publisher = v.publisher || "";
+            book.year = String(v.publishedDate || "").match(/\d{4}/)?.[0] || "";
+            book.pages = v.pageCount || null;
+            const cats = (v.categories || []).join(" ").toLowerCase();
+            if (/textbook|college/.test(cats + " " + book.title.toLowerCase())) book.format = "textbook";
+            else if (/hardcover|hardback/.test(cats)) book.format = "hardcover";
+            else if (/mass market/.test(cats)) book.format = "mass-market";
+            else if (book.pages && book.pages > 500) book.format = "hardcover";
+            if (sale && sale.listPrice && sale.listPrice.amount) book.retail = Number(sale.listPrice.amount);
+            else if (sale && sale.retailPrice && sale.retailPrice.amount) book.retail = Number(sale.retailPrice.amount);
+            book.desc = stripHtml(v.description || "");
+          }
+        }
+      } catch (e) { /* google optional */ }
+      if (book.title === isbn) {
+        try {
+          const ol = await fetch("https://openlibrary.org/isbn/" + isbn + ".json");
+          if (ol.ok) {
+            const j = await ol.json();
+            if (j.title) {
+              book.title = j.title;
+              book.publisher = (j.publishers && j.publishers[0]) || book.publisher;
+              book.year = String(j.publish_date || "").match(/\d{4}/)?.[0] || book.year;
+              book.pages = j.number_of_pages || book.pages;
+            }
+          }
+        } catch (e) { /* open library optional */ }
+      }
+      return book;
+    }
+
+    function stripHtml(raw) {
+      return String(raw || "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&/gi, "&")
+        .replace(/"/gi, "\"")
+        .replace(/&#39;/g, "'")
+        .replace(/\s+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+    }
+    function gradeCopy(grade) {
+      if (grade === "LN") return "Like New. Looks unread. Tight binding, clean pages. No highlighting, underlining, or writing noted.";
+      if (grade === "VG") return "Very Good. Light shelf wear. Complete and clean. No highlighting, underlining, or writing noted.";
+      if (grade === "G") return "Good. Obvious reading wear. Complete and readable. All pages present.";
+      if (grade === "A") return "Acceptable. Worn but complete. All pages present. Packed as a reading copy.";
+      return "Used copy. Complete. Packed as described.";
+    }
+    function amazonNote(book, grade) {
+      return [gradeCopy(grade), "This is the copy that ships.", "Packed from Lincoln, Nebraska via USPS Media Mail."].join(" ").slice(0, 1000);
+    }
+    function ebayListing(book, grade) {
+      const blurb = stripHtml(book.desc || "").slice(0, 1200);
+      const fmt = book.format === "hardcover" ? "Hardcover" : book.format === "textbook" ? "Textbook" : book.format === "mass-market" ? "Mass Market Paperback" : "Paperback";
+      const meta = [fmt, book.publisher, book.year, book.pages ? book.pages + " pages" : ""].filter(Boolean).join(" · ");
+      const about = blurb || "Used copy of the edition on the barcode. Match the ISBN if this is for a classroom list.";
+      return [
+        book.title,
+        book.author ? "by " + book.author : "",
+        meta,
+        "ISBN " + book.isbn13,
+        "",
+        about,
+        "",
+        "This copy",
+        gradeCopy(grade),
+        "",
+        "Ships from Lincoln, Nebraska via USPS Media Mail. Packed to survive the trip. Combined shipping when the cart allows."
+      ].filter((l, i, arr) => !(l === "" && arr[i - 1] === "")).join("\n");
+    }
+    function tagPrice(book, grade, keep) {
+      const mult = GRADE_MULT[grade] || 0.48;
+      let market;
+      if (book.retail && book.retail > 0) market = moneyPrice(Math.max(1.5, book.retail * mult));
+      else {
+        const base = book.format === "textbook" ? 24 : book.format === "hardcover" ? 11 : book.format === "mass-market" ? 5.5 : 8.5;
+        market = moneyPrice(Math.max(1.5, base * mult + isbnSalt(book.isbn13)));
+      }
+      if (keep != null) return Math.max(market, listForKeep(keep, book.format));
+      return market;
+    }
+
+    async function runHydrate() {
+      const keep = parseKeep();
+      state.phase = "hydrate";
+      show("phase-hydrate");
+      const out = [];
+      for (let i = 0; i < state.drafts.length; i++) {
+        const d = state.drafts[i];
+        $("hydrate-step").textContent = "Looking up " + (i + 1) + " of " + state.drafts.length;
+        $("hydrate-bar").style.width = Math.round((i / (state.drafts.length + 1)) * 100) + "%";
+        const book = await lookup(d.isbn);
+        const price = tagPrice(book, d.grade, keep);
+        const cond = amazonNote(book, d.grade);
+        const title = clipTitle([book.title, book.author, book.format === "hardcover" ? "Hardcover" : "Paperback", book.year].filter(Boolean).join(" "), 80);
+        $("hydrate-step").textContent = "Writing buyer copy for " + (book.title || d.isbn);
+        out.push({
+          sku: sku(i),
+          isbn13: book.isbn13,
+          isbn10: book.isbn10,
+          title: book.title,
+          author: book.author,
+          publisher: book.publisher,
+          year: book.year,
+          format: book.format,
+          grade: d.grade,
+          listPrice: price,
+          ebayTitle: title,
+          ebayDescription: ebayListing(book, d.grade),
+          conditionDescription: cond,
+        });
+      }
+      $("hydrate-bar").style.width = "100%";
+      state.copies = out;
+      goFiles();
+    }
+
+    function goFiles() {
+      state.phase = "files";
+      show("phase-files");
+      $("file-list").innerHTML = state.copies.map((c) => (
+        '<div class="isbn-row" style="align-items:flex-start"><span>' + c.title +
+        '<br><span class="muted">' + c.isbn13 + " · " + GRADE_WORD[c.grade] + '</span>' +
+        '<br><span class="muted" style="display:block;margin-top:0.35rem;">' +
+        String(c.ebayDescription || "").slice(0, 220).replace(/</g, "") +
+        (c.ebayDescription && c.ebayDescription.length > 220 ? "…" : "") +
+        "</span></span>" +
+        '<span class="price">' + money(c.listPrice) + "</span></div>"
+      )).join("");
+    }
+
+    function ebayCsv() {
+      const headers = ["Action","CustomLabel","Category","Title","Description","Format","Duration","StartPrice","BuyItNowPrice","Quantity","ConditionID","ConditionDescription","PicURL","P:ISBN","C:Author","C:Book Title","C:Language","C:Format","C:Publisher","C:Publication Year","Location","PostalCode","ShippingType","ShippingService-1:Option","ShippingService-1:FreeShipping","DispatchTimeMax","ReturnsAcceptedOption","ReturnsWithinOption","RefundOption","ShippingCostPaidByOption","BestOfferEnabled"];
+      const rows = state.copies.map((c) => [
+        "Add", c.sku, "261186", c.ebayTitle, c.ebayDescription.replace(/\r?\n/g, "<br>"),
+        "FixedPrice", "GTC", String(c.listPrice), String(c.listPrice), "1",
+        EBAY_COND[c.grade] || "5000", c.conditionDescription,
+        "https://covers.openlibrary.org/b/isbn/" + c.isbn13 + "-L.jpg",
+        c.isbn13, c.author, c.title, "English",
+        c.format === "hardcover" ? "Hardcover" : "Paperback",
+        c.publisher, c.year, "Lincoln, NE", "68508", "Flat", "USPSMedia", "0", "1",
+        "ReturnsAccepted", "Days_30", "MoneyBack", "Buyer", "1",
+      ].map(csvEsc).join(","));
+      return [headers.join(","), ...rows].join("\n");
+    }
+    function amazonTsv() {
+      const headers = ["sku","product-id","product-id-type","price","item-condition","quantity","add-delete","item-note","fulfillment-center-id","will-ship-internationally","expedited-shipping"];
+      const rows = state.copies.map((c) => [
+        c.sku, c.isbn13, "2", String(c.listPrice), AMAZON_COND[c.grade] || "3", "1", "a",
+        c.conditionDescription.slice(0, 1000), "DEFAULT", "6", "n",
+      ].map(tsvEsc).join("\t"));
+      return [headers.join("\t"), ...rows].join("\n");
+    }
+    function ledgerCsv() {
+      const headers = ["sku","isbn13","title","author","publisher","published_year","format","condition","list_price","ebay_title","ebay_description","amazon_item_note"];
+      const rows = state.copies.map((c) => [c.sku, c.isbn13, c.title, c.author, c.publisher, c.year, c.format, GRADE_WORD[c.grade], String(c.listPrice), c.ebayTitle, c.ebayDescription, c.conditionDescription].map(csvEsc).join(","));
+      return "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    }
+    $("btn-ebay").onclick = () => download("shelfmark-ebay-" + todayStamp() + ".csv", ebayCsv());
+    $("btn-amazon").onclick = () => download("shelfmark-amazon-" + todayStamp() + ".txt", amazonTsv(), "text/tab-separated-values");
+    $("btn-ledger").onclick = () => download("shelfmark-session-" + todayStamp() + ".csv", ledgerCsv());
+    $("btn-ebay-go").onclick = () => {
+      download("shelfmark-ebay-" + todayStamp() + ".csv", ebayCsv());
+      window.open(EBAY_UPLOAD, "_blank", "noopener,noreferrer");
+    };
+
+    show("phase-pick");
+  })();
+  </script>
+</body>
+</html>

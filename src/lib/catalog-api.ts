@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { DESK_CATALOG } from "@/lib/desk-catalog";
 import type { BookFormat, CatalogBook } from "@/lib/types";
 import { isbn13To10, normalizeScannedCode } from "@/lib/isbn";
+import { stripHtml } from "@/lib/channel-copy";
 
 type OlBook = {
   title?: string;
@@ -12,6 +13,8 @@ type OlBook = {
   cover?: { large?: string; medium?: string };
   subjects?: { name?: string }[];
   identifiers?: { isbn_10?: string[]; isbn_13?: string[] };
+  excerpts?: { text?: string }[];
+  notes?: string;
 };
 
 function guessFormat(title: string, subjects: string, pages: number | null): BookFormat {
@@ -38,6 +41,7 @@ function score(book: CatalogBook): number {
   if (book.publisher) s += 1;
   if (book.publishedYear) s += 1;
   if (book.coverUrl) s += 1;
+  if (book.description) s += 2;
   if (/^[\x00-\x7F]+$/.test(book.title)) s += 2;
   if (book.language.toLowerCase().startsWith("en")) s += 1;
   return s;
@@ -70,6 +74,7 @@ function fromOlPayload(isbn13: string, json: unknown): CatalogBook | null {
     .filter(Boolean)
     .slice(0, 6)
     .join(", ");
+  const excerpt = (book.excerpts ?? []).map((e) => e.text).filter(Boolean).join(" ");
   return {
     isbn13,
     isbn10,
@@ -86,6 +91,7 @@ function fromOlPayload(isbn13: string, json: unknown): CatalogBook | null {
       `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg`,
     subjects,
     source: "Open Library",
+    description: stripHtml(excerpt || book.notes || "").slice(0, 1800),
   };
 }
 
@@ -98,6 +104,7 @@ type GbVolume = {
     pageCount?: number;
     language?: string;
     categories?: string[];
+    description?: string;
     imageLinks?: { thumbnail?: string; smallThumbnail?: string };
     industryIdentifiers?: { type: string; identifier: string }[];
   };
@@ -126,6 +133,7 @@ function fromGbPayload(isbn13: string, json: unknown): CatalogBook | null {
       `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg`,
     subjects,
     source: "Google Books",
+    description: stripHtml(info.description || "").slice(0, 1800),
   };
 }
 
@@ -144,7 +152,14 @@ export const lookupIsbn = createServerFn({ method: "POST" })
       (b): b is CatalogBook => Boolean(b),
     );
     candidates.sort((a, b) => score(b) - score(a));
-    if (candidates[0]) return { ok: true as const, book: candidates[0] };
+    if (candidates[0]) {
+      const winner = { ...candidates[0] };
+      if (!winner.description) {
+        const other = candidates.find((c) => c.description);
+        if (other) winner.description = other.description;
+      }
+      return { ok: true as const, book: winner };
+    }
 
     return {
       ok: true as const,
@@ -161,6 +176,7 @@ export const lookupIsbn = createServerFn({ method: "POST" })
         coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn13}-L.jpg`,
         subjects: "",
         source: "ISBN only",
+        description: "",
       } satisfies CatalogBook,
       missing: true,
     };

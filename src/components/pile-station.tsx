@@ -4,18 +4,10 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TargetKeepField, useTargetKeep } from "@/components/target-keep-field";
-import { lookupIsbn } from "@/lib/catalog-api";
-import { estimateIsbnComp } from "@/lib/comps-api";
-import { listCopies, saveCopy, deleteCopy } from "@/lib/copies-api";
-import { buildConditionDescription } from "@/lib/condition";
+import { listCopies, deleteCopy } from "@/lib/copies-api";
 import { extractIsbns } from "@/lib/isbn";
-import {
-  buildEbayTitle,
-  buildTemplateDescription,
-  copiesPricedToKeep,
-  kidCard,
-  listPriceForKeep,
-} from "@/lib/pricing";
+import { copiesPricedToKeep, listPriceForKeep } from "@/lib/pricing";
+import { hydrateDraft } from "@/lib/hydrate-stack";
 import { copiesToEbayCsv, downloadText } from "@/lib/ebay-csv";
 import { copiesToAmazonLoader, copiesToShelfmarkCsv } from "@/lib/listing-files";
 import { todayStamp } from "@/lib/sku";
@@ -96,79 +88,14 @@ export function PileStation() {
       const isbn = isbns[i];
       setProgress({ at: i + 1, total: isbns.length, title: isbn });
       try {
-        const res = await lookupIsbn({ data: { code: isbn } });
-        if (!res.ok || !res.book) continue;
-        const book = res.book;
-        const grade = "VG" as const;
-        const comp = await estimateIsbnComp({
-          data: {
-            isbn13: book.isbn13,
-            title: book.title,
-            author: book.author,
-            publisher: book.publisher,
-            publishedYear: book.publishedYear,
-            format: book.format,
-            pages: book.pages,
-            conditionGrade: grade,
-            subjects: book.subjects,
-          },
-        });
-        const floor =
-          targetKeep != null
-            ? listPriceForKeep({ keep: targetKeep, format: book.format || "paperback", shop: "amazon" })
-            : 0;
-        const listPrice = targetKeep != null ? Math.max(comp.listPrice, floor) : comp.listPrice;
-        const card = kidCard({ listPrice, format: book.format || "paperback", wePayStamp: true });
-        const cond = buildConditionDescription(grade, [], "");
-        const ebayTitle = buildEbayTitle({
-          title: book.title || isbn,
-          author: book.author,
-          format: book.format,
-          publishedYear: book.publishedYear,
-          conditionGrade: grade,
-        });
-        await saveCopy({
-          data: {
-            isbn13: book.isbn13,
-            isbn10: book.isbn10,
-            title: book.title || isbn,
-            author: book.author,
-            publisher: book.publisher,
-            publishedYear: book.publishedYear,
-            pages: book.pages,
-            format: book.format,
-            language: book.language,
-            coverUrl: book.coverUrl,
-            subjects: book.subjects,
-            conditionGrade: grade,
-            defects: [],
-            listFormat: "bin",
-            listPrice,
-            auctionStart: null,
-            ebayTitle,
-            ebayDescription: buildTemplateDescription({
-              title: book.title || isbn,
-              author: book.author,
-              publisher: book.publisher,
-              publishedYear: book.publishedYear,
-              format: book.format,
-              pages: book.pages,
-              language: book.language,
-              isbn13: book.isbn13,
-              conditionDescription: cond,
-              shippingNote: "Ships from Lincoln, Nebraska via USPS Media Mail.",
-            }),
-            conditionDescription: cond,
-            pricingRationale: card.why,
-            shippingNote: "Ships from Lincoln, Nebraska via USPS Media Mail.",
-            status: targetKeep != null ? "ready" : card.choice === "GIVE IT AWAY" ? "skipped" : "ready",
-            skipReason: targetKeep != null ? "" : card.choice === "GIVE IT AWAY" ? card.why : "",
-            channels: targetKeep != null || card.choice !== "GIVE IT AWAY" ? ["amazon", "ebay"] : [],
-          },
-        });
+        const copy = await hydrateDraft(
+          { key: `${isbn}-${Date.now()}`, isbn, grade: "VG" },
+          { targetKeep },
+        );
+        setCopies((rows) => [copy, ...rows.filter((r) => r.id !== copy.id)]);
         added += 1;
         beep(true);
-        speak(`${book.title || isbn}. In the pile.`);
+        speak(`${copy.title || isbn}. In the pile.`);
       } catch {
         beep(false);
       }

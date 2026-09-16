@@ -17,7 +17,7 @@ export function copiesToBiblioCsv(copies: CopyRecord[], mode: "add" | "delete"):
     const status = mode === "delete" ? "D" : "A";
     const price = mode === "delete" ? "0" : String(c.listPrice ?? 9.99);
     const cond = c.conditionGrade ? gradeLabel(c.conditionGrade) : "Good";
-    const desc = (c.conditionDescription || c.ebayDescription || cond).replace(/\r?\n/g, " ");
+    const desc = (c.conditionDescription || cond).replace(/\r?\n/g, " ");
     return [c.sku, status, price, c.author, c.title, cond, c.isbn13, desc].map(csvEscape).join(",");
   });
   return [headers.join(","), ...rows].join("\n");
@@ -59,7 +59,7 @@ export function copiesToAmazonLoader(copies: CopyRecord[], mode: "add" | "delete
     "expedited-shipping",
   ];
   const rows = copies.map((c) => {
-    const note = (c.conditionDescription || c.ebayDescription || "").slice(0, 200);
+    const note = (c.conditionDescription || "").slice(0, 1000);
     const values = [
       c.sku,
       c.isbn13 || c.isbn10,
@@ -96,6 +96,9 @@ export function copiesToShelfmarkCsv(copies: CopyRecord[]): string {
     "listed_at",
     "sold_at",
     "skip_reason",
+    "ebay_title",
+    "ebay_description",
+    "amazon_item_note",
   ];
   const rows = copies.map((c) =>
     [
@@ -114,6 +117,9 @@ export function copiesToShelfmarkCsv(copies: CopyRecord[]): string {
       c.listedAt ?? "",
       c.soldAt ?? "",
       c.skipReason,
+      c.ebayTitle,
+      c.ebayDescription,
+      c.conditionDescription,
     ]
       .map((v) => csvEscape(String(v ?? "")))
       .join(","),
